@@ -1,0 +1,147 @@
+From 775dec7b479f9fa900fa46d174b202efc14407fa Mon Sep 17 00:00:00 2001
+From: Watson Sato <wsato@redhat.com>
+Date: Mon, 13 Feb 2023 11:14:40 +0100
+Subject: [PATCH 6/6] remove rule logind_session_timeout and associated
+ variable from profiles
+
+Patch-name: scap-security-guide-0.1.67-remove_logind_session_timeout_from_profiles-PR_10202.patch
+Patch-status: remove rule logind_session_timeout and associated variable from profiles
+---
+ controls/anssi.yml                                 | 2 --
+ products/rhel8/profiles/cjis.profile               | 2 --
+ products/rhel8/profiles/ospp.profile               | 2 --
+ products/rhel8/profiles/pci-dss.profile            | 2 --
+ products/rhel8/profiles/rht-ccp.profile            | 2 --
+ tests/data/profile_stability/rhel8/ospp.profile    | 2 --
+ tests/data/profile_stability/rhel8/pci-dss.profile | 2 --
+ 7 files changed, 14 deletions(-)
+
+diff --git a/controls/anssi.yml b/controls/anssi.yml
+index 607ce976ef..9e631d1de4 100644
+--- a/controls/anssi.yml
++++ b/controls/anssi.yml
+@@ -676,8 +676,6 @@ controls:
+     - var_accounts_tmout=10_min
+     - sshd_set_idle_timeout
+     - sshd_idle_timeout_value=10_minutes
+-    - logind_session_timeout
+-    - var_logind_session_timeout=10_minutes
+     - sshd_set_keepalive
+ 
+   - id: R30
+diff --git a/products/rhel8/profiles/cjis.profile b/products/rhel8/profiles/cjis.profile
+index f60b65bc06..18394802b9 100644
+--- a/products/rhel8/profiles/cjis.profile
++++ b/products/rhel8/profiles/cjis.profile
+@@ -104,7 +104,6 @@ selections:
+     - sshd_allow_only_protocol2
+     - sshd_set_idle_timeout
+     - var_sshd_set_keepalive=0
+-    - logind_session_timeout
+     - sshd_set_keepalive_0
+     - disable_host_auth
+     - sshd_disable_root_login
+@@ -120,7 +119,6 @@ selections:
+     - set_firewalld_default_zone
+     - firewalld_sshd_port_enabled
+     - sshd_idle_timeout_value=30_minutes
+-    - var_logind_session_timeout=30_minutes
+     - inactivity_timeout_value=30_minutes
+     - sysctl_net_ipv4_conf_default_accept_source_route
+     - sysctl_net_ipv4_tcp_syncookies
+diff --git a/products/rhel8/profiles/ospp.profile b/products/rhel8/profiles/ospp.profile
+index 0fe17b2085..fb46ab4c0c 100644
+--- a/products/rhel8/profiles/ospp.profile
++++ b/products/rhel8/profiles/ospp.profile
+@@ -300,8 +300,6 @@ selections:
+     ## We deliberately set sshd timeout to 1 minute before tmux lock timeout
+     - sshd_idle_timeout_value=14_minutes
+     - sshd_set_idle_timeout
+-    - logind_session_timeout
+-    - var_logind_session_timeout=14_minutes
+ 
+     ## Disable Unauthenticated Login (such as Guest Accounts)
+     ## FIA_UAU.1
+diff --git a/products/rhel8/profiles/pci-dss.profile b/products/rhel8/profiles/pci-dss.profile
+index c63c5f4a07..c0c9b12773 100644
+--- a/products/rhel8/profiles/pci-dss.profile
++++ b/products/rhel8/profiles/pci-dss.profile
+@@ -17,7 +17,6 @@ selections:
+     - var_accounts_passwords_pam_faillock_deny=6
+     - var_accounts_passwords_pam_faillock_unlock_time=1800
+     - sshd_idle_timeout_value=15_minutes
+-    - var_logind_session_timeout=15_minutes
+     - var_password_pam_minlen=7
+     - var_password_pam_minclass=2
+     - var_accounts_maximum_age_login_defs=90
+@@ -110,7 +109,6 @@ selections:
+     - dconf_gnome_screensaver_lock_enabled
+     - dconf_gnome_screensaver_mode_blank
+     - sshd_set_idle_timeout
+-    - logind_session_timeout
+     - var_sshd_set_keepalive=0
+     - sshd_set_keepalive_0
+     - accounts_password_pam_minlen
+diff --git a/products/rhel8/profiles/rht-ccp.profile b/products/rhel8/profiles/rht-ccp.profile
+index 0a00d2f46b..775727e885 100644
+--- a/products/rhel8/profiles/rht-ccp.profile
++++ b/products/rhel8/profiles/rht-ccp.profile
+@@ -12,7 +12,6 @@ selections:
+     - var_selinux_state=enforcing
+     - var_selinux_policy_name=targeted
+     - sshd_idle_timeout_value=5_minutes
+-    - var_logind_session_timeout=5_minutes
+     - var_accounts_minimum_age_login_defs=7
+     - var_accounts_passwords_pam_faillock_deny=5
+     - var_accounts_password_warn_age_login_defs=7
+@@ -89,7 +88,6 @@ selections:
+     - package_telnet_removed
+     - sshd_allow_only_protocol2
+     - sshd_set_idle_timeout
+-    - logind_session_timeout
+     - var_sshd_set_keepalive=0
+     - sshd_set_keepalive_0
+     - disable_host_auth
+diff --git a/tests/data/profile_stability/rhel8/ospp.profile b/tests/data/profile_stability/rhel8/ospp.profile
+index a31f3245d8..267b66a4f8 100644
+--- a/tests/data/profile_stability/rhel8/ospp.profile
++++ b/tests/data/profile_stability/rhel8/ospp.profile
+@@ -104,7 +104,6 @@ selections:
+ - kernel_module_firewire-core_disabled
+ - kernel_module_sctp_disabled
+ - kernel_module_tipc_disabled
+-- logind_session_timeout
+ - mount_option_boot_nodev
+ - mount_option_boot_nosuid
+ - mount_option_dev_shm_nodev
+@@ -254,7 +253,6 @@ selections:
+ - var_password_pam_ucredit=1
+ - var_password_pam_lcredit=1
+ - sshd_idle_timeout_value=14_minutes
+-- var_logind_session_timeout=14_minutes
+ - var_accounts_passwords_pam_faillock_deny=3
+ - var_accounts_passwords_pam_faillock_fail_interval=900
+ - var_accounts_passwords_pam_faillock_unlock_time=never
+diff --git a/tests/data/profile_stability/rhel8/pci-dss.profile b/tests/data/profile_stability/rhel8/pci-dss.profile
+index 5c77ea6a85..902d0084fc 100644
+--- a/tests/data/profile_stability/rhel8/pci-dss.profile
++++ b/tests/data/profile_stability/rhel8/pci-dss.profile
+@@ -109,7 +109,6 @@ selections:
+ - gid_passwd_group_same
+ - grub2_audit_argument
+ - install_hids
+-- logind_session_timeout
+ - no_empty_passwords
+ - package_aide_installed
+ - package_audispd-plugins_installed
+@@ -137,7 +136,6 @@ selections:
+ - var_accounts_passwords_pam_faillock_deny=6
+ - var_accounts_passwords_pam_faillock_unlock_time=1800
+ - sshd_idle_timeout_value=15_minutes
+-- var_logind_session_timeout=15_minutes
+ - var_password_pam_minlen=7
+ - var_password_pam_minclass=2
+ - var_accounts_maximum_age_login_defs=90
+-- 
+2.39.1
+

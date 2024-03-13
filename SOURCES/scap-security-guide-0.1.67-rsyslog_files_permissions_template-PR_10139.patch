@@ -1,0 +1,3148 @@
+From b09bf3ad8acd82003f068f0d8f60a44f04092656 Mon Sep 17 00:00:00 2001
+From: Watson Sato <wsato@redhat.com>
+Date: Tue, 7 Feb 2023 10:53:17 +0100
+Subject: [PATCH 3/5] Extends rsyslog_logfiles_attributes_modify template for
+ permissions
+
+Patch-name: scap-security-guide-0.1.67-rsyslog_files_permissions_template-PR_10139.patch
+Patch-status: Extends rsyslog_logfiles_attributes_modify template for permissions
+---
+ .../ansible/shared.yml                        |  59 --------
+ .../rsyslog_files_permissions/bash/shared.sh  |  92 ------------
+ .../rsyslog_files_permissions/oval/shared.xml | 131 -----------------
+ .../rsyslog_files_permissions/rule.yml        |  30 +++-
+ .../IncludeConfig_glob_perms_0600.pass.sh     |  40 -----
+ .../IncludeConfig_glob_perms_0601.fail.sh     |  41 ------
+ .../tests/IncludeConfig_perms_0600.pass.sh    |  39 -----
+ .../tests/IncludeConfig_perms_0601.fail.sh    |  40 -----
+ .../include_config_syntax_perms_0600.pass.sh  |  85 -----------
+ .../include_config_syntax_perms_0601.fail.sh  |  86 -----------
+ .../include_multiline_perms_0600.pass.sh      |  41 ------
+ .../tests/include_perms_0600.pass.sh          |  39 -----
+ ...erms_0600_IncludeConfig_perms_0600.pass.sh |  52 -------
+ ...erms_0600_IncludeConfig_perms_0601.fail.sh |  53 -------
+ ...00_IncludeConfig_perms_0601_hidden.pass.sh |  53 -------
+ ...0_IncludeConfig_perms_0601_missing.pass.sh |  45 ------
+ .../include_perms_0600_cloudinit.pass.sh      |  23 ---
+ .../tests/include_perms_0601.fail.sh          |  41 ------
+ .../include_perms_0601_cloudinit.fail.sh      |  22 ---
+ .../mixed_correct_attr_group_read.pass.sh     |  25 ++++
+ .../tests/mixed_correct_attr_stricter.pass.sh |  25 ++++
+ .../tests/perms_0600.pass.sh                  |  35 -----
+ .../tests/perms_0601.fail.sh                  |  34 -----
+ .../ansible.template                          |   7 +-
+ .../bash.template                             |  33 ++---
+ .../oval.template                             | 138 +++++++++---------
+ .../template.py                               |  18 +++
+ .../tests/IncludeConfig_is_other.fail.sh      |  50 -------
+ .../tests/include_is_other.fail.sh            |  50 -------
+ ...udeConfig_is_other_RainerLogClause.fail.sh |  75 ----------
+ .../tests/include_is_root.pass.sh             |  46 ------
+ ...ude_is_root_IncludeConfig_is_other.fail.sh |  63 --------
+ ...lude_is_root_IncludeConfig_is_root.pass.sh |  58 --------
+ ...ludeConfig_is_root_RainerLogClause.pass.sh |  59 --------
+ .../tests/include_multiline_is_root.pass.sh   |  47 ------
+ .../tests/is_root.pass.sh                     |  30 ----
+ ...er.fail.sh => legacy_correct_attr.pass.sh} |  26 ++--
+ ...sh => legacy_include_correct_attr.pass.sh} |  32 ++--
+ .../legacy_include_incorrect_attr.fail.sh     |  50 +++++++
+ .../tests/legacy_incorrect_attr.fail.sh       |  33 +++++
+ .../tests/mixed_correct_attr.pass.sh          |  33 +++++
+ .../tests/mixed_include_correct_attr.pass.sh  |  58 ++++++++
+ ...ixed_include_incorrect_attr_legacy.fail.sh |  63 ++++++++
+ ...ixed_include_incorrect_attr_rainer.fail.sh |  63 ++++++++
+ .../mixed_incorrect_attr_cloudinit.fail.sh    |  38 +++++
+ .../tests/mixed_incorrect_attr_legacy.fail.sh |  38 +++++
+ .../tests/mixed_incorrect_attr_rainer.fail.sh |  38 +++++
+ .../tests/rainer_correct_attr.pass.sh         |  31 ++++
+ .../tests/rainer_include_correct_attr.pass.sh |  45 ++++++
+ .../rainer_include_incorrect_attr.fail.sh     |  50 +++++++
+ ...ner_include_multiline_correct_attr.pass.sh |  47 ++++++
+ ...r_include_multiline_incorrect_attr.fail.sh |  52 +++++++
+ .../tests/rainer_incorrect_attr.fail.sh       |  33 +++++
+ 53 files changed, 875 insertions(+), 1660 deletions(-)
+ delete mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/ansible/shared.yml
+ delete mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/bash/shared.sh
+ delete mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/oval/shared.xml
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_glob_perms_0600.pass.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_glob_perms_0601.fail.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_perms_0600.pass.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_perms_0601.fail.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_config_syntax_perms_0600.pass.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_config_syntax_perms_0601.fail.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_multiline_perms_0600.pass.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600.pass.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0600.pass.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0601.fail.sh
+ delete mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0601_hidden.pass.sh
+ delete mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0601_missing.pass.sh
+ delete mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_cloudinit.pass.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0601.fail.sh
+ delete mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0601_cloudinit.fail.sh
+ create mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/mixed_correct_attr_group_read.pass.sh
+ create mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/mixed_correct_attr_stricter.pass.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/perms_0600.pass.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/perms_0601.fail.sh
+ create mode 100644 shared/templates/rsyslog_logfiles_attributes_modify/template.py
+ delete mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/IncludeConfig_is_other.fail.sh
+ delete mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_other.fail.sh
+ delete mode 100644 shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_other_IncludeConfig_is_other_RainerLogClause.fail.sh
+ delete mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root.pass.sh
+ delete mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_other.fail.sh
+ delete mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_root.pass.sh
+ delete mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_root_RainerLogClause.pass.sh
+ delete mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/include_multiline_is_root.pass.sh
+ delete mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/is_root.pass.sh
+ rename shared/templates/rsyslog_logfiles_attributes_modify/tests/{is_other.fail.sh => legacy_correct_attr.pass.sh} (53%)
+ rename shared/templates/rsyslog_logfiles_attributes_modify/tests/{IncludeConfig_is_root.pass.sh => legacy_include_correct_attr.pass.sh} (51%)
+ create mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/legacy_include_incorrect_attr.fail.sh
+ create mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/legacy_incorrect_attr.fail.sh
+ create mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_correct_attr.pass.sh
+ create mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_include_correct_attr.pass.sh
+ create mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_include_incorrect_attr_legacy.fail.sh
+ create mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_include_incorrect_attr_rainer.fail.sh
+ create mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_incorrect_attr_cloudinit.fail.sh
+ create mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_incorrect_attr_legacy.fail.sh
+ create mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_incorrect_attr_rainer.fail.sh
+ create mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_correct_attr.pass.sh
+ create mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_correct_attr.pass.sh
+ create mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_incorrect_attr.fail.sh
+ create mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_multiline_correct_attr.pass.sh
+ create mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_multiline_incorrect_attr.fail.sh
+ create mode 100755 shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_incorrect_attr.fail.sh
+
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/ansible/shared.yml b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/ansible/shared.yml
+deleted file mode 100644
+index ae8bbe3302..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/ansible/shared.yml
++++ /dev/null
+@@ -1,59 +0,0 @@
+-# platform = Red Hat Virtualization 4,multi_platform_fedora,multi_platform_ol,multi_platform_rhel,multi_platform_sle
+-# reboot = false
+-# strategy = configure
+-# complexity = low
+-# disruption = medium
+-
+-- name: "Set rsyslog logfile configuration facts"
+-  set_fact:
+-    rsyslog_etc_config: "/etc/rsyslog.conf"
+-{{% if product in ["debian10", "debian11", "ubuntu1604", "ubuntu1804", "ubuntu2004", "ubuntu2204", "sle15", "sle12"] %}}
+-    desired_perm_mode: "640"
+-{{% else %}}
+-    desired_perm_mode: "600"
+-{{% endif %}}
+-
+-# * And also the log file paths listed after rsyslog's $IncludeConfig directive
+-#   (store the result into array for the case there's shell glob used as value of IncludeConfig)
+-- name: "Get IncludeConfig directive"
+-  shell: |
+-    set -o pipefail
+-    grep -e '$IncludeConfig' {{ rsyslog_etc_config }} | cut -d ' ' -f 2 || true
+-  register: rsyslog_old_inc
+-  changed_when: False
+-
+-- name: "Get include files directives"
+-  shell: |
+-    set -o pipefail
+-    grep -oP '^\s*include\s*\(\s*file.*' {{ rsyslog_etc_config }} |cut  -d"\"" -f 2 || true
+-  register: rsyslog_new_inc
+-  changed_when: False
+-
+-- name: "Expand glob expressions"
+-  shell: |
+-    set -o pipefail
+-    eval printf '%s\\n' {{ item }}
+-  register: include_config_output
+-  loop: "{{ rsyslog_old_inc.stdout_lines + rsyslog_new_inc.stdout_lines }}"
+-
+-- name: "List all config files"
+-  shell: find {{ item }} -not -path "*/.*" -type f
+-  loop: "{{ include_config_output.results|map(attribute='stdout_lines')|list|flatten }}"
+-  register: rsyslog_config_files
+-  failed_when: False
+-  changed_when: False
+-
+-- name: "Extract log files"
+-  shell: |
+-    set -o pipefail
+-    grep -oP '^[^(\s|#|\$)]+[\s]+.*[\s]+-?(/+[^:;\s]+);*\.*$' {{ item }}  |awk '{print $NF}'|sed -e 's/^-//' || true
+-  loop: "{{ rsyslog_config_files.results|map(attribute='stdout_lines')|list|flatten|unique + [ rsyslog_etc_config ] }}"
+-  register: log_files
+-  changed_when: False
+-
+-- name: "Setup log files permissions"
+-  ignore_errors: yes
+-  file:
+-    path: "{{ item }}"
+-    mode: "{{ desired_perm_mode }}"
+-  loop: "{{ log_files.results|map(attribute='stdout_lines')|list|flatten|unique }}"
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/bash/shared.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/bash/shared.sh
+deleted file mode 100644
+index e4e2ade29e..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/bash/shared.sh
++++ /dev/null
+@@ -1,92 +0,0 @@
+-# platform = Red Hat Virtualization 4,multi_platform_fedora,multi_platform_ol,multi_platform_rhel,multi_platform_sle
+-
+-# List of log file paths to be inspected for correct permissions
+-# * Primarily inspect log file paths listed in /etc/rsyslog.conf
+-RSYSLOG_ETC_CONFIG="/etc/rsyslog.conf"
+-# * And also the log file paths listed after rsyslog's $IncludeConfig directive
+-#   (store the result into array for the case there's shell glob used as value of IncludeConfig)
+-readarray -t OLD_INC < <(grep -e "\$IncludeConfig[[:space:]]\+[^[:space:];]\+" /etc/rsyslog.conf | cut -d ' ' -f 2)
+-readarray -t RSYSLOG_INCLUDE_CONFIG < <(for INCPATH in "${OLD_INC[@]}"; do eval printf '%s\\n' "${INCPATH}"; done)
+-readarray -t NEW_INC < <(awk '/)/{f=0} /include\(/{f=1} f{nf=gensub("^(include\\(|\\s*)file=\"(\\S+)\".*","\\2",1); if($0!=nf){print nf}}' /etc/rsyslog.conf)
+-readarray -t RSYSLOG_INCLUDE < <(for INCPATH in "${NEW_INC[@]}"; do eval printf '%s\\n' "${INCPATH}"; done)
+-
+-# Declare an array to hold the final list of different log file paths
+-declare -a LOG_FILE_PATHS
+-
+-# Array to hold all rsyslog config entries
+-RSYSLOG_CONFIGS=()
+-RSYSLOG_CONFIGS=("${RSYSLOG_ETC_CONFIG}" "${RSYSLOG_INCLUDE_CONFIG[@]}" "${RSYSLOG_INCLUDE[@]}")
+-
+-# Get full list of files to be checked
+-# RSYSLOG_CONFIGS may contain globs such as
+-# /etc/rsyslog.d/*.conf /etc/rsyslog.d/*.frule
+-# So, loop over the entries in RSYSLOG_CONFIGS and use find to get the list of included files.
+-RSYSLOG_CONFIG_FILES=()
+-for ENTRY in "${RSYSLOG_CONFIGS[@]}"
+-do
+-	# If directory, rsyslog will search for config files in recursively.
+-	# However, files in hidden sub-directories or hidden files will be ignored.
+-	if [ -d "${ENTRY}" ]
+-	then
+-		readarray -t FINDOUT < <(find "${ENTRY}" -not -path '*/.*' -type f)
+-		RSYSLOG_CONFIG_FILES+=("${FINDOUT[@]}")
+-	elif [ -f "${ENTRY}" ]
+-	then
+-		RSYSLOG_CONFIG_FILES+=("${ENTRY}")
+-	else
+-		echo "Invalid include object: ${ENTRY}"
+-	fi
+-done
+-
+-# Browse each file selected above as containing paths of log files
+-# ('/etc/rsyslog.conf' and '/etc/rsyslog.d/*.conf' in the default configuration)
+-for LOG_FILE in "${RSYSLOG_CONFIG_FILES[@]}"
+-do
+-	# From each of these files extract just particular log file path(s), thus:
+-	# * Ignore lines starting with space (' '), comment ('#"), or variable syntax ('$') characters,
+-	# * Ignore empty lines,
+-	# * Strip quotes and closing brackets from paths.
+-	# * Ignore paths that match /dev|/etc.*\.conf, as those are paths, but likely not log files
+-	# * From the remaining valid rows select only fields constituting a log file path
+-	# Text file column is understood to represent a log file path if and only if all of the following are met:
+-	# * it contains at least one slash '/' character,
+-	# * it is preceded by space
+-	# * it doesn't contain space (' '), colon (':'), and semicolon (';') characters
+-	# Search log file for path(s) only in case it exists!
+-	if [[ -f "${LOG_FILE}" ]]
+-	then
+-		NORMALIZED_CONFIG_FILE_LINES=$(sed -e "/^[#|$]/d" "${LOG_FILE}")
+-		LINES_WITH_PATHS=$(grep '[^/]*\s\+\S*/\S\+$' <<< "${NORMALIZED_CONFIG_FILE_LINES}")
+-		FILTERED_PATHS=$(awk '{if(NF>=2&&($NF~/^\//||$NF~/^-\//)){sub(/^-\//,"/",$NF);print $NF}}' <<< "${LINES_WITH_PATHS}")
+-		CLEANED_PATHS=$(sed -e "s/[\"')]//g; /\\/etc.*\.conf/d; /\\/dev\\//d" <<< "${FILTERED_PATHS}")
+-		MATCHED_ITEMS=$(sed -e "/^$/d" <<< "${CLEANED_PATHS}")
+-		# Since above sed command might return more than one item (delimited by newline), split the particular
+-		# matches entries into new array specific for this log file
+-		readarray -t ARRAY_FOR_LOG_FILE <<< "$MATCHED_ITEMS"
+-		# Concatenate the two arrays - previous content of $LOG_FILE_PATHS array with
+-		# items from newly created array for this log file
+-		LOG_FILE_PATHS+=("${ARRAY_FOR_LOG_FILE[@]}")
+-		# Delete the temporary array
+-		unset ARRAY_FOR_LOG_FILE
+-	fi
+-done
+-{{% if product in ["debian10", "debian11", "ubuntu1604", "ubuntu1804", "ubuntu2004", "ubuntu2204", "sle15", "sle12"] %}}
+-DESIRED_PERM_MOD=640
+-{{% else %}}
+-DESIRED_PERM_MOD=600
+-{{% endif %}}
+-# Correct the form o
+-for LOG_FILE_PATH in "${LOG_FILE_PATHS[@]}"
+-do
+-	# Sanity check - if particular $LOG_FILE_PATH is empty string, skip it from further processing
+-	if [ -z "$LOG_FILE_PATH" ]
+-	then
+-		continue
+-	fi
+-
+-	# Also for each log file check if its permissions differ from 600. If so, correct them
+-	if [ -f "$LOG_FILE_PATH" ] && [ "$(/usr/bin/stat -c %a "$LOG_FILE_PATH")" -ne $DESIRED_PERM_MOD ]
+-	then
+-		/bin/chmod $DESIRED_PERM_MOD "$LOG_FILE_PATH"
+-	fi
+-done
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/oval/shared.xml b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/oval/shared.xml
+deleted file mode 100644
+index 559d5fb101..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/oval/shared.xml
++++ /dev/null
+@@ -1,131 +0,0 @@
+-<def-group oval_version="5.11">
+-  <definition class="compliance" id="rsyslog_files_permissions" version="1">
+-    {{{ oval_metadata("File permissions for all syslog log files should be set correctly.") }}}
+-
+-    <criteria operator="AND">
+-      {{% if product in ["debian10", "debian11", "ubuntu1604", "ubuntu1804"] %}}
+-      <extend_definition comment="rsyslog daemon is used as local logging daemon" definition_ref="package_rsyslog_installed" />
+-      {{% endif %}}
+-      <criterion comment="Check permissions of all system log files" test_ref="test_rsyslog_files_permissions" />
+-    </criteria>
+-
+-  </definition>
+-
+-  <!-- First obtain rsyslog's $IncludeConfig directive and include() object (introduced in rsyslog v8.33.0) values.
+-       To workaround empty include objects case, when FunctionGroup operations return "does not exist" result, added empty string match -->
+-  <ind:textfilecontent54_object id="object_rfp_rsyslog_include_config_value" comment="rsyslog's $IncludeConfig directive and include() object values" version="1">
+-    <ind:filepath>/etc/rsyslog.conf</ind:filepath>
+-    <ind:pattern operation="pattern match">^(?:include\([\n\s]*file="([^\s;]+)".*|\$IncludeConfig[\s]+([^\s;]+))$</ind:pattern>
+-    <ind:instance datatype="int" operation="greater than or equal">1</ind:instance>
+-    <filter action="exclude">state_permissions_ignore_hidden_paths</filter>
+-  </ind:textfilecontent54_object>
+-
+-  <ind:textfilecontent54_state id="state_permissions_ignore_hidden_paths" comment="ignore hidden conf files" version="1">
+-    <!-- Among the paths matched in object_rfp_rsyslog_include_config_value there can be paths from
+-         include() or $IncludeConfig that point to hidden dirs or files.
+-         Rsyslog ignores these conf files, so we should ignore them too.
+-    -->
+-    <ind:subexpression operation="pattern match">^.*\/\..*$</ind:subexpression>
+-  </ind:textfilecontent54_state>
+-
+-  <!-- Turn that glob value into Perl's regex so it can be used as filepath pattern below -->
+-  <local_variable id="var_rfp_include_config_regex" datatype="string" version="1" comment="$IncludeConfig value converted to regex">
+-    <unique>
+-      <glob_to_regex>
+-        <object_component item_field="subexpression" object_ref="object_rfp_rsyslog_include_config_value" />
+-      </glob_to_regex>
+-    </unique>
+-  </local_variable>
+-
+-  <!-- Create a variable_object from the regex variable
+-       If the variable has no values, there won't be any objects -->
+-  <ind:variable_object id="object_var_rfp_include_config_regex" comment="Make variable object from regex variable" version="1">
+-    <ind:var_ref>var_rfp_include_config_regex</ind:var_ref>
+-  </ind:variable_object>
+-
+-  <local_variable id="var_rfp_syslog_config" datatype="string" version="1" comment="Locations of all rsyslog configuration files as collection">
+-    <literal_component datatype="string">^/etc/rsyslog.conf$</literal_component>
+-  </local_variable>
+-
+-  <ind:variable_object id="object_var_rfp_syslog_config" comment="Make variable object for use" version="1">
+-    <ind:var_ref>var_rfp_syslog_config</ind:var_ref>
+-  </ind:variable_object>
+-
+-  <!-- Combine the two variable_objects into one variable_object
+-       We do it this way to avoid referencing an empty variable in a state comparison, which
+-       will cause a test to evaluate to fail. Combining an empty set of objects is fine though -->
+-  <ind:variable_object id="object_var_rfp_all_log_files" comment="Filter out empty string" version="1">
+-    <set>
+-      <object_reference>object_var_rfp_include_config_regex</object_reference>
+-      <object_reference>object_var_rfp_syslog_config</object_reference>
+-    </set>
+-  </ind:variable_object>
+-
+-  <!-- In element filepath of object_rfg_log_files_paths we need to pass a list of values,
+-       a list of objects won't do. So we make a local_variable from the variable_objects. -->
+-  <local_variable id="var_rfp_all_log_files" datatype="string" version="1" comment="Locations of all rsyslog configuration files as collection">
+-    <object_component object_ref="object_var_rfp_all_log_files" item_field="value"/>
+-  </local_variable>
+-
+-  <!-- For each item from that collection (particular rsyslog's configuration file path) search
+-       that rsyslog's configuration file to select file paths for log files directives
+-  -->
+-  <ind:textfilecontent54_object id="object_rfp_log_files_paths" comment="All rsyslog configuration files" version="1">
+-    <ind:filepath operation="pattern match" var_ref="var_rfp_all_log_files" var_check="at least one" />
+-    <!-- Chunk of text retrieved from rsyslog's configuration file is considered
+-         to constitute a log file path if all of the following conditions are met:
+-         * the string represents a regular file on particular file system
+-           (verified via corresponding file_state below),
+-         * the chunk of text is in the last column in the row,
+-           (possibly suffixed by ';' character and rsyslog Template name),
+-         * contains at least one slash '/' character, and simultaneously
+-           doesn't contain any of ';', ':' and space characters,
+-         * the chunk was retrieved from a row not starting with space, '#',
+-           or '$' characters
+-    -->
+-    <ind:pattern operation="pattern match">^[^(\s|#|\$)]+[\s]+.*[\s]+-?(/+[^:;\s]+);*\.*$</ind:pattern>
+-    <ind:instance datatype="int" operation="greater than or equal">1</ind:instance>
+-    <filter action="exclude">state_permissions_ignore_include_paths</filter>
+-  </ind:textfilecontent54_object>
+-
+-  <ind:textfilecontent54_state id="state_permissions_ignore_include_paths" comment="ignore" version="1">
+-    <!-- Among the paths matched in object_rfp_log_files_paths there can be paths from
+-         include() or $IncludeConfig statements.
+-         These paths are conf files, not log files. Their permissions don't need to be as
+-         required for log files, thus, lets exclude them from the list of objects found
+-    -->
+-    <ind:text operation="pattern match">(?:file="[^\s;]+"|\$IncludeConfig[\s]+[^\s;]+|\/dev\/.*)</ind:text>
+-  </ind:textfilecontent54_state>
+-
+-  <!-- Define OVAL variable to hold all the various system log files locations
+-       retrieved from the different rsyslog configuration files
+-  -->
+-  <local_variable id="var_rfp_log_files_paths" datatype="string" version="1" comment="File paths of all rsyslog configuration files">
+-    <object_component item_field="subexpression" object_ref="object_rfp_log_files_paths" />
+-  </local_variable>
+-
+-  <!-- Perform the test if all rsyslog system log files have correct permissions -->
+-  <unix:file_test check="all" check_existence="all_exist" id="test_rsyslog_files_permissions" version="1" comment="Permissions of system log files are correct">
+-    <unix:object object_ref="object_rsyslog_files_permissions" />
+-    <unix:state state_ref="state_rsyslog_files_permissions" />
+-  </unix:file_test>
+-
+-  <unix:file_object id="object_rsyslog_files_permissions" comment="Various system log files" version="1">
+-    <unix:filepath datatype="string" var_ref="var_rfp_log_files_paths" var_check="at least one" />
+-  </unix:file_object>
+-
+-  <unix:file_state id="state_rsyslog_files_permissions" version="1">
+-    <unix:type operation="equals">regular</unix:type>
+-    <unix:uexec datatype="boolean">false</unix:uexec>
+-    {{% if product in ["debian10", "debian11", "ubuntu1604", "ubuntu1804", "ubuntu2004", "ubuntu2204", "sle15", "sle12"] %}}
+-    <unix:gread datatype="boolean">true</unix:gread>
+-    {{% else %}}
+-    <unix:gread datatype="boolean">false</unix:gread>
+-    {{% endif %}}
+-    <unix:gwrite datatype="boolean">false</unix:gwrite>
+-    <unix:gexec datatype="boolean">false</unix:gexec>
+-    <unix:oread datatype="boolean">false</unix:oread>
+-    <unix:owrite datatype="boolean">false</unix:owrite>
+-    <unix:oexec datatype="boolean">false</unix:oexec>
+-  </unix:file_state>
+-</def-group>
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/rule.yml b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/rule.yml
+index 508ff73cde..042c35362d 100644
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/rule.yml
++++ b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/rule.yml
+@@ -1,18 +1,24 @@
++{{%- if product in ["debian10", "debian11", "ubuntu1604", "ubuntu1804", "ubuntu2004", "ubuntu2204", "sle15", "sle12"] %}}
++    {{%- set rsyslog_perm='640' %}}
++{{%- else %}}
++    {{%- set rsyslog_perm='600' %}}
++{{%- endif %}}
++
+ documentation_complete: true
+ 
+ title: 'Ensure System Log Files Have Correct Permissions'
+ 
+ description: |-
+     The file permissions for all log files written by <tt>rsyslog</tt> should
+-    be set to 600, or more restrictive. These log files are determined by the
++    be set to {{{ rsyslog_perm }}}, or more restrictive. These log files are determined by the
+     second part of each Rule line in <tt>/etc/rsyslog.conf</tt> and typically
+     all appear in <tt>/var/log</tt>. For each log file <i>LOGFILE</i>
+     referenced in <tt>/etc/rsyslog.conf</tt>, run the following command to
+     inspect the file's permissions:
+     <pre>$ ls -l <i>LOGFILE</i></pre>
+-    If the permissions are not 600 or more restrictive, run the following
++    If the permissions are not {{{ rsyslog_perm }}} or more restrictive, run the following
+     command to correct this:
+-    <pre>$ sudo chmod 0600 <i>LOGFILE</i></pre>"
++    <pre>$ sudo chmod {{{ rsyslog_perm }}} <i>LOGFILE</i></pre>"
+ 
+ rationale: |-
+     Log files can contain valuable information regarding system
+@@ -46,9 +52,23 @@ ocil_clause: 'the permissions are not correct'
+ 
+ ocil: |-
+     The file permissions for all log files written by <tt>rsyslog</tt> should
+-    be set to 600, or more restrictive. These log files are determined by the
++    be set to {{{ rsyslog_perm }}}, or more restrictive. These log files are determined by the
+     second part of each Rule line in <tt>/etc/rsyslog.conf</tt> and typically
+     all appear in <tt>/var/log</tt>. To see the permissions of a given log
+     file, run the following command:
+     <pre>$ ls -l <i>LOGFILE</i></pre>
+-    The permissions should be 600, or more restrictive.
++    The permissions should be {{{ rsyslog_perm }}}, or more restrictive.
++
++template:
++  name: rsyslog_logfiles_attributes_modify
++  vars:
++    attribute: permissions
++    value: '0600'
++    value@debian10: '0640'
++    value@debian11: '0640'
++    value@sle12: '0640'
++    value@sle15: '0640'
++    value@ubuntu1604: '0640'
++    value@ubuntu1804: '0640'
++    value@ubuntu2004: '0640'
++    value@ubuntu2204: '0640'
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_glob_perms_0600.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_glob_perms_0600.pass.sh
+deleted file mode 100755
+index c27e7874d9..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_glob_perms_0600.pass.sh
++++ /dev/null
+@@ -1,40 +0,0 @@
+-#!/bin/bash
+-# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
+-
+-# Check rsyslog.conf with log file permissions 0600 from rules and
+-# log file permissions 0600 from $IncludeConfig passes.
+-# test $IncludeConfig with wildcard (*.conf)
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS=0600
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files and permissions
+-chmod $PERMS ${RSYSLOG_TEST_LOGS[0]}
+-chmod $PERMS ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-\$IncludeConfig ${RSYSLOG_TEST_DIR}/*.conf
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_glob_perms_0601.fail.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_glob_perms_0601.fail.sh
+deleted file mode 100755
+index 124b5e863e..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_glob_perms_0601.fail.sh
++++ /dev/null
+@@ -1,41 +0,0 @@
+-#!/bin/bash
+-# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol
+-
+-# Check rsyslog.conf with log file permissions 0600 from rules and
+-# log file permissions 0601 from $IncludeConfig fails.
+-# test $IncludeConfig with wildcard (*.conf)
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS_PASS=0600
+-PERMS_FAIL=0601
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files and permissions
+-chmod $PERMS_PASS ${RSYSLOG_TEST_LOGS[0]}
+-chmod $PERMS_FAIL ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*      ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-\$IncludeConfig ${RSYSLOG_TEST_DIR}/*.conf
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_perms_0600.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_perms_0600.pass.sh
+deleted file mode 100755
+index a6ff6a1109..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_perms_0600.pass.sh
++++ /dev/null
+@@ -1,39 +0,0 @@
+-#!/bin/bash
+-# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
+-
+-# Check rsyslog.conf with log file permissions 0600 from rules and
+-# log file permissions 0600 from $IncludeConfig passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS=0600
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files and permissions
+-chmod $PERMS ${RSYSLOG_TEST_LOGS[0]}
+-chmod $PERMS ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-\$IncludeConfig ${test_conf}
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_perms_0601.fail.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_perms_0601.fail.sh
+deleted file mode 100755
+index 2ae5c89a4e..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/IncludeConfig_perms_0601.fail.sh
++++ /dev/null
+@@ -1,40 +0,0 @@
+-#!/bin/bash
+-# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol
+-
+-# Check rsyslog.conf with log file permissions 0600 from rules and
+-# log file permissions 0601 from $IncludeConfig fails.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS_PASS=0600
+-PERMS_FAIL=0601
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files and permissions
+-chmod $PERMS_PASS ${RSYSLOG_TEST_LOGS[0]}
+-chmod $PERMS_FAIL ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*      ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-\$IncludeConfig ${test_conf}
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_config_syntax_perms_0600.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_config_syntax_perms_0600.pass.sh
+deleted file mode 100755
+index a5a2f67fad..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_config_syntax_perms_0600.pass.sh
++++ /dev/null
+@@ -1,85 +0,0 @@
+-#!/bin/bash
+-# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
+-
+-# Check rsyslog.conf with log file permissions 0600 from rules and
+-# log file permissions 0600 from $IncludeConfig passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS=0600
+-
+-# setup test data
+-create_rsyslog_test_logs 5
+-
+-# setup test log files and permissions
+-chmod $PERMS ${RSYSLOG_TEST_LOGS[0]}
+-chmod $PERMS ${RSYSLOG_TEST_LOGS[1]}
+-chmod $PERMS ${RSYSLOG_TEST_LOGS[2]}
+-chmod $PERMS ${RSYSLOG_TEST_LOGS[3]}
+-chmod $PERMS ${RSYSLOG_TEST_LOGS[4]}
+-
+-# create test configuration files
+-conf_subdir=${RSYSLOG_TEST_DIR}/subdir
+-conf_hiddir=${RSYSLOG_TEST_DIR}/.hiddir
+-mkdir ${conf_subdir}
+-mkdir ${conf_hiddir}
+-
+-test_conf_in_subdir=${conf_subdir}/in_subdir.conf
+-test_conf_name_bak=${RSYSLOG_TEST_DIR}/name.bak
+-
+-test_conf_in_hiddir=${conf_hiddir}/in_hiddir.conf
+-test_conf_dot_name=${RSYSLOG_TEST_DIR}/.name.conf
+-
+-cat << EOF > ${test_conf_in_subdir}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-cat << EOF > ${test_conf_name_bak}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[2]}
+-EOF
+-
+-cat << EOF > ${test_conf_in_hiddir}
+-# rsyslog configuration file
+-# not used
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[3]}
+-EOF
+-
+-cat << EOF > ${test_conf_dot_name}
+-# rsyslog configuration file
+-# not used
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[4]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${RSYSLOG_TEST_DIR}/*/*.conf" mode="optional")
+-include(file="${RSYSLOG_TEST_DIR}/*.conf" mode="optional")
+-include(file="${RSYSLOG_TEST_DIR}" mode="optional")
+-
+-\$IncludeConfig ${RSYSLOG_TEST_DIR}/*/*.conf
+-\$IncludeConfig ${RSYSLOG_TEST_DIR}/*.conf
+-\$IncludeConfig ${RSYSLOG_TEST_DIR}
+-
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_config_syntax_perms_0601.fail.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_config_syntax_perms_0601.fail.sh
+deleted file mode 100755
+index fe4db0a3c9..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_config_syntax_perms_0601.fail.sh
++++ /dev/null
+@@ -1,86 +0,0 @@
+-#!/bin/bash
+-# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
+-
+-# Check rsyslog.conf with log file permissions 0600 from rules and
+-# log file permissions 0601 from $IncludeConfig fails.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS_PASS=0600
+-PERMS_FAIL=0601
+-
+-# setup test data
+-create_rsyslog_test_logs 5
+-
+-# setup test log files and permissions
+-chmod $PERMS_PASS ${RSYSLOG_TEST_LOGS[0]}
+-chmod $PERMS_FAIL ${RSYSLOG_TEST_LOGS[1]}
+-chmod $PERMS_FAIL ${RSYSLOG_TEST_LOGS[2]}
+-chmod $PERMS_FAIL ${RSYSLOG_TEST_LOGS[3]}
+-chmod $PERMS_FAIL ${RSYSLOG_TEST_LOGS[4]}
+-
+-# create test configuration files
+-conf_subdir=${RSYSLOG_TEST_DIR}/subdir
+-conf_hiddir=${RSYSLOG_TEST_DIR}/.hiddir
+-mkdir ${conf_subdir}
+-mkdir ${conf_hiddir}
+-
+-test_conf_in_subdir=${conf_subdir}/in_subdir.conf
+-test_conf_name_bak=${RSYSLOG_TEST_DIR}/name.bak
+-
+-test_conf_in_hiddir=${conf_hiddir}/in_hiddir.conf
+-test_conf_dot_name=${RSYSLOG_TEST_DIR}/.name.conf
+-
+-cat << EOF > ${test_conf_in_subdir}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-cat << EOF > ${test_conf_name_bak}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[2]}
+-EOF
+-
+-cat << EOF > ${test_conf_in_hiddir}
+-# rsyslog configuration file
+-# not used
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[3]}
+-EOF
+-
+-cat << EOF > ${test_conf_dot_name}
+-# rsyslog configuration file
+-# not used
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[4]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${RSYSLOG_TEST_DIR}/*/*.conf" mode="optional")
+-include(file="${RSYSLOG_TEST_DIR}/*.conf" mode="optional")
+-include(file="${RSYSLOG_TEST_DIR}" mode="optional")
+-
+-\$IncludeConfig ${RSYSLOG_TEST_DIR}/*/*.conf
+-\$IncludeConfig ${RSYSLOG_TEST_DIR}/*.conf
+-\$IncludeConfig ${RSYSLOG_TEST_DIR}
+-
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_multiline_perms_0600.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_multiline_perms_0600.pass.sh
+deleted file mode 100755
+index eabcb21956..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_multiline_perms_0600.pass.sh
++++ /dev/null
+@@ -1,41 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+-
+-# Check rsyslog.conf with log file permissions 0600 from rules and
+-# log file permissions 0600 from multiline include() passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS=0600
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files and permissions
+-chmod $PERMS ${RSYSLOG_TEST_LOGS[0]}
+-chmod $PERMS ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(
+-   file="${test_conf}"
+-)
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600.pass.sh
+deleted file mode 100755
+index 32cd4c334a..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600.pass.sh
++++ /dev/null
+@@ -1,39 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+-
+-# Check rsyslog.conf with log file permissions 0600 from rules and
+-# log file permissions 0600 from include() passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS=0600
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files and permissions
+-chmod $PERMS ${RSYSLOG_TEST_LOGS[0]}
+-chmod $PERMS ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${test_conf}")
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0600.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0600.pass.sh
+deleted file mode 100755
+index 357d4f9718..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0600.pass.sh
++++ /dev/null
+@@ -1,52 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8
+-
+-# Check rsyslog.conf with log file permisssions 0600 from rules and
+-# log file permissions 0600 from include() passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS_PASS=0600
+-
+-# setup test data
+-create_rsyslog_test_logs 3
+-
+-# setup test log files and permissions
+-chmod $PERMS_PASS ${RSYSLOG_TEST_LOGS[0]}
+-chmod $PERMS_PASS ${RSYSLOG_TEST_LOGS[1]}
+-chmod $PERMS_PASS ${RSYSLOG_TEST_LOGS[2]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create test2 configuration file
+-test_conf2=${RSYSLOG_TEST_DIR}/test2.conf
+-cat << EOF > ${test_conf2}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[2]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${test_conf}")
+-
+-\$IncludeConfig ${test_conf2}
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0601.fail.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0601.fail.sh
+deleted file mode 100755
+index 7bdb830c00..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0601.fail.sh
++++ /dev/null
+@@ -1,53 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8
+-
+-# Check rsyslog.conf with log file permisssions 0600 from rules and
+-# log file permissions 0601 from include() fails.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS_PASS=0600
+-PERMS_FAIL=0601
+-
+-# setup test data
+-create_rsyslog_test_logs 3
+-
+-# setup test log files and permissions
+-chmod $PERMS_PASS ${RSYSLOG_TEST_LOGS[0]}
+-chmod $PERMS_PASS ${RSYSLOG_TEST_LOGS[1]}
+-chmod $PERMS_FAIL ${RSYSLOG_TEST_LOGS[2]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create test2 configuration file
+-test_conf2=${RSYSLOG_TEST_DIR}/test2.conf
+-cat << EOF > ${test_conf2}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[2]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${test_conf}")
+-
+-\$IncludeConfig ${test_conf2}
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0601_hidden.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0601_hidden.pass.sh
+deleted file mode 100644
+index 9b0185c6b2..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0601_hidden.pass.sh
++++ /dev/null
+@@ -1,53 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8
+-
+-# Check rsyslog.conf with log file permisssions 0600 from rules and
+-# log file permissions 0601 from include() fails.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS_PASS=0600
+-PERMS_FAIL=0601
+-
+-# setup test data
+-create_rsyslog_test_logs 3
+-
+-# setup test log files and permissions
+-chmod $PERMS_PASS ${RSYSLOG_TEST_LOGS[0]}
+-chmod $PERMS_PASS ${RSYSLOG_TEST_LOGS[1]}
+-chmod $PERMS_FAIL ${RSYSLOG_TEST_LOGS[2]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create hidden test2 configuration file
+-test_conf2=${RSYSLOG_TEST_DIR}/.test2.conf
+-cat << EOF > ${test_conf2}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[2]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${test_conf}")
+-
+-\$IncludeConfig ${test_conf2}
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0601_missing.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0601_missing.pass.sh
+deleted file mode 100644
+index b929f2a94a..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_IncludeConfig_perms_0601_missing.pass.sh
++++ /dev/null
+@@ -1,45 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8
+-
+-# Check rsyslog.conf with log file permisssions 0600 from rules and
+-# log file permissions 0601 from include() fails.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS_PASS=0600
+-PERMS_FAIL=0601
+-
+-# setup test data
+-create_rsyslog_test_logs 3
+-
+-# setup test log files and permissions
+-chmod $PERMS_PASS ${RSYSLOG_TEST_LOGS[0]}
+-chmod $PERMS_PASS ${RSYSLOG_TEST_LOGS[1]}
+-chmod $PERMS_FAIL ${RSYSLOG_TEST_LOGS[2]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# Skip creation test2 configuration file
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${test_conf}")
+-
+-\$IncludeConfig ${test_conf2}
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_cloudinit.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_cloudinit.pass.sh
+deleted file mode 100644
+index 2eb515a43e..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0600_cloudinit.pass.sh
++++ /dev/null
+@@ -1,23 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS=0600
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files and permissions
+-chmod $PERMS ${RSYSLOG_TEST_LOGS[@]}
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-:syslogtag, isequal, "[CLOUDINIT]" ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0601.fail.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0601.fail.sh
+deleted file mode 100755
+index fd3f9e92ec..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0601.fail.sh
++++ /dev/null
+@@ -1,41 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8
+-
+-# Check rsyslog.conf with log file permissions 0600 from rules and
+-# log file permissions 0601 from include() fails.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS_FAIL=0601
+-
+-PERMS_PASS=0600
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files and permissions
+-chmod $PERMS_PASS ${RSYSLOG_TEST_LOGS[0]}
+-chmod $PERMS_FAIL ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*      ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${test_conf}")
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0601_cloudinit.fail.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0601_cloudinit.fail.sh
+deleted file mode 100644
+index 7a598626d0..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/include_perms_0601_cloudinit.fail.sh
++++ /dev/null
+@@ -1,22 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files and permissions
+-chmod 0600 ${RSYSLOG_TEST_LOGS[0]}
+-chmod 0601 ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-:syslogtag, isequal, "[CLOUDINIT]" ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/mixed_correct_attr_group_read.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/mixed_correct_attr_group_read.pass.sh
+new file mode 100755
+index 0000000000..b3846fec47
+--- /dev/null
++++ b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/mixed_correct_attr_group_read.pass.sh
+@@ -0,0 +1,25 @@
++#!/bin/bash
++# platform = multi_platform_sle,multi_platform_ubuntu
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++CHATTR="chmod"
++ATTR_VALUE="0640"
++
++# create three test log file
++create_rsyslog_test_logs 2
++
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[1]}
++
++# add rules with both syntax for different test log files
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     ${RSYSLOG_TEST_LOGS[0]}
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[1]}")
++
++EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/mixed_correct_attr_stricter.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/mixed_correct_attr_stricter.pass.sh
+new file mode 100755
+index 0000000000..0b4cb5dce0
+--- /dev/null
++++ b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/mixed_correct_attr_stricter.pass.sh
+@@ -0,0 +1,25 @@
++#!/bin/bash
++# platform = multi_platform_all
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++CHATTR="chmod"
++ATTR_VALUE="0400"
++
++# create three test log file
++create_rsyslog_test_logs 2
++
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[1]}
++
++# add rules with both syntax for different test log files
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     ${RSYSLOG_TEST_LOGS[0]}
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[1]}")
++
++EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/perms_0600.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/perms_0600.pass.sh
+deleted file mode 100755
+index fbdcd18f77..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/perms_0600.pass.sh
++++ /dev/null
+@@ -1,35 +0,0 @@
+-#!/bin/bash
+-# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
+-
+-# Check if log file with permissions 0600 in rsyslog.conf passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS=0600
+-
+-# setup test data
+-create_rsyslog_test_logs 4
+-
+-# setup all files with incorrect permission
+-chmod 0601 "${RSYSLOG_TEST_LOGS[@]}"
+-
+-# setup the real logfile with correct permissions
+-chmod $PERMS "${RSYSLOG_TEST_LOGS[0]}"
+-
+-# add rule with 0600 permissions log file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*        ${RSYSLOG_TEST_LOGS[0]}
+-
+- *.*        ${RSYSLOG_TEST_LOGS[1]}
+-
+-authpriv.*        /nonexistent_file
+-
+-# *.*        /irrelevant_file
+-
+-\$something /irrelevant_file
+-
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/perms_0601.fail.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/perms_0601.fail.sh
+deleted file mode 100755
+index 75e9558c63..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_permissions/tests/perms_0601.fail.sh
++++ /dev/null
+@@ -1,34 +0,0 @@
+-#!/bin/bash
+-# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
+-
+-# Check if log file with permissions 0601 in rsyslog.conf fails.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-PERMS=0601
+-
+-# setup test data
+-create_rsyslog_test_logs 3
+-
+-# setup test log file and permissions
+-chmod $PERMS ${RSYSLOG_TEST_LOGS[0]}
+-
+-# add rule with 0601 permissions log file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-cron.*        /nonexistent_file
+-
+- authpriv.*        /irrelevant_file
+-
+-# *.*        /irrelevant_file
+-
+-\$something /irrelevant_file
+-
+-something.*	${RSYSLOG_TEST_LOGS[2]}
+-
+-EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/ansible.template b/shared/templates/rsyslog_logfiles_attributes_modify/ansible.template
+index fc9e8844b6..81d6220415 100644
+--- a/shared/templates/rsyslog_logfiles_attributes_modify/ansible.template
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/ansible.template
+@@ -20,7 +20,7 @@
+ - name: '{{{ rule_title }}} - Get include files directives'
+   ansible.builtin.shell: |
+     set -o pipefail
+-    grep -oP '^\s*include\s*\(\s*file.*' {{ rsyslog_etc_config }} |cut  -d"\"" -f 2 || true
++    awk '/)/{f=0} /include\(/{f=1} f{nf=gensub("^(include\\(|\\s*)file=\"(\\S+)\".*","\\2",1); if($0!=nf){print nf}}' {{ rsyslog_etc_config }} || true
+   register: rsyslog_new_inc
+   changed_when: False
+ 
+@@ -61,8 +61,9 @@
+ - name: '{{{ rule_title }}} -Setup log files attribute'
+   ansible.builtin.file:
+     path: "{{ item }}"
+-    owner: '{{ ( "{{{ ATTRIBUTE }}}" is match("owner")) | ternary({{{ VALUE }}}, omit) }}'
+-    group: '{{ ( "{{{ ATTRIBUTE }}}" is match("groupowner")) | ternary({{{ VALUE }}} , omit) }}'
++    {{{ 'owner: ' ~ VALUE if ATTRIBUTE == "owner" }}}
++    {{{- 'group: ' ~ VALUE if ATTRIBUTE == "groupowner" }}}
++    {{{- 'mode: ' ~ VALUE if ATTRIBUTE == "permissions" }}}
+     state: file
+   loop: "{{ log_files | list | flatten | unique }}"
+   failed_when: false
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/bash.template b/shared/templates/rsyslog_logfiles_attributes_modify/bash.template
+index ab4a563dc5..d6755d5692 100644
+--- a/shared/templates/rsyslog_logfiles_attributes_modify/bash.template
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/bash.template
+@@ -48,7 +48,8 @@ do
+ 	# * Strip quotes and closing brackets from paths.
+ 	# * Ignore paths that match /dev|/etc.*\.conf, as those are paths, but likely not log files
+ 	# * From the remaining valid rows select only fields constituting a log file path
+-	# Text file column is understood to represent a log file path if and only if all of the following are met:
++	# Text file column is understood to represent a log file path if and only if all of the
++	# following are met:
+ 	# * it contains at least one slash '/' character,
+ 	# * it is preceded by space
+ 	# * it doesn't contain space (' '), colon (':'), and semicolon (';') characters
+@@ -60,8 +61,8 @@ do
+ 		FILTERED_PATHS=$(awk '{if(NF>=2&&($NF~/^\//||$NF~/^-\//)){sub(/^-\//,"/",$NF);print $NF}}' <<< "${LINES_WITH_PATHS}")
+ 		CLEANED_PATHS=$(sed -e "s/[\"')]//g; /\\/etc.*\.conf/d; /\\/dev\\//d" <<< "${FILTERED_PATHS}")
+ 		MATCHED_ITEMS=$(sed -e "/^$/d" <<< "${CLEANED_PATHS}")
+-		# Since above sed command might return more than one item (delimited by newline), split the particular
+-		# matches entries into new array specific for this log file
++		# Since above sed command might return more than one item (delimited by newline), split
++		# the particular matches entries into new array specific for this log file
+ 		readarray -t ARRAY_FOR_LOG_FILE <<< "$MATCHED_ITEMS"
+ 		# Concatenate the two arrays - previous content of $LOG_FILE_PATHS array with
+ 		# items from newly created array for this log file
+@@ -71,7 +72,8 @@ do
+ 	fi
+ done
+ 
+-# Check for RainerScript action log format which might be also multiline so grep regex is a bit curly
++# Check for RainerScript action log format which might be also multiline so grep regex is a bit
++# curly:
+ # extract possibly multiline action omfile expressions
+ # extract File="logfile" expression
+ # match only "logfile" expression
+@@ -82,22 +84,10 @@ do
+ 	LOG_FILE_PATHS+=("$(echo "${OMFILE_LINES}"| grep -oE "\"([/[:alnum:][:punct:]]*)\""|tr -d "\"")")
+ done
+ 
+-FILE_PARAM="{{{ ATTRIBUTE }}}"
+-FILE_CMD=""
+-case "$FILE_PARAM" in
+-     "groupowner")
+-        FILE_CMD=$(which chgrp)
+-        ;;
+-     "owner")
+-        FILE_CMD=$(which chown)
+-        ;;
+-      *)
+-        echo -n "Not supported file attribute! "
+-        exit 1
+-      ;;
+-esac
+-
+-# Correct the form o
++# Ensure the correct attribute if file exists
++{{{ 'FILE_CMD="chown"' if ATTRIBUTE == "owner" }}}
++{{{- 'FILE_CMD="chgrp"' if ATTRIBUTE == "groupowner" }}}
++{{{- 'FILE_CMD="chmod"' if ATTRIBUTE == "permissions" }}}
+ for LOG_FILE_PATH in "${LOG_FILE_PATHS[@]}"
+ do
+ 	# Sanity check - if particular $LOG_FILE_PATH is empty string, skip it from further processing
+@@ -105,6 +95,5 @@ do
+ 	then
+ 		continue
+ 	fi
+-
+-	$FILE_CMD "+{{{ VALUE }}}" "$LOG_FILE_PATH"
++	$FILE_CMD "{{{ VALUE }}}" "$LOG_FILE_PATH"
+ done
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/oval.template b/shared/templates/rsyslog_logfiles_attributes_modify/oval.template
+index 4f288df1c9..243d678852 100644
+--- a/shared/templates/rsyslog_logfiles_attributes_modify/oval.template
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/oval.template
+@@ -3,59 +3,57 @@
+     {{{ oval_metadata("All syslog log files should have appropriate ownership.") }}}
+     <criteria operator="AND">
+       {{% if product in ["debian10", "debian11", "ubuntu1604"] %}}
+-      <extend_definition comment="rsyslog daemon is used as local logging daemon"
+-      definition_ref="package_rsyslog_installed" />
++      <extend_definition definition_ref="package_rsyslog_installed"
++        comment="rsyslog daemon is used as local logging daemon"/>
+       {{% endif %}}
+-      <criterion comment="Check if all system log files are owned by the appropriate 
+-      {{{ ATTRIBUTE  }}}" test_ref="test_{{{ _RULE_ID }}}" />
++      <criterion test_ref="test_{{{ _RULE_ID }}}"
++        comment="Check if all system log files have appropriate {{{ ATTRIBUTE }}} set"/>
+     </criteria>
+-
+   </definition>
+ 
+-  <!-- First obtain rsyslog's $IncludeConfig directive and include() object (introduced in rsyslog
+-  v8.33.0) values.  -->
+-  
+-  <ind:textfilecontent54_object id="object_{{{ _RULE_ID }}}_include_config_value"
+-       comment="rsyslog's $IncludeConfig directive and include() object values" version="1">
++  <!-- First obtain rsyslog's $IncludeConfig directive and include() object values.
++       The last was introduced in rsyslog v8.33.0). -->
++  <ind:textfilecontent54_object id="object_{{{ _RULE_ID }}}_include_config_value" version="1"
++       comment="rsyslog's $IncludeConfig and include() statements values.">
+     <ind:filepath>/etc/rsyslog.conf</ind:filepath>
+     <ind:pattern
+-    operation="pattern match">^(?:include\([\n\s]*file="([^\s;]+)".*|\$IncludeConfig[\s]+([^\s;]+))$</ind:pattern>
++      operation="pattern match">^(?:include\([\n\s]*file="([^\s;]+)".*|\$IncludeConfig[\s]+([^\s;]+))$</ind:pattern>
+     <ind:instance datatype="int" operation="greater than or equal">1</ind:instance>
+   </ind:textfilecontent54_object>
+ 
+   <!-- Turn that glob value into Perl's regex so it can be used as filepath pattern below -->
+   <local_variable id="var_{{{ _RULE_ID }}}_include_config_regex" datatype="string" version="1"
+-  comment="$IncludeConfig value converted to regex">
++    comment="rsyslog's include config values converted to regex.">
+     <unique>
+       <glob_to_regex>
+         <object_component item_field="subexpression"
+-                          object_ref="object_{{{ _RULE_ID }}}_include_config_value" />
++          object_ref="object_{{{ _RULE_ID }}}_include_config_value"/>
+       </glob_to_regex>
+     </unique>
+   </local_variable>
+ 
+-  <!-- Create a variable_object from the regex variable
+-       If the variable has no values, there won't be any objects -->
+-  <ind:variable_object id="object_var_{{{ _RULE_ID }}}_include_config_regex"
+-                       comment="Make variable object from regex variable" version="1">
++  <!-- Create a variable_object from the regex variable.
++       If the variable has no values, there won't be any objects. -->
++  <ind:variable_object id="object_var_{{{ _RULE_ID }}}_include_config_regex" version="1"
++    comment="Make variable object from regex variable.">
+     <ind:var_ref>var_{{{ _RULE_ID }}}_include_config_regex</ind:var_ref>
+   </ind:variable_object>
+ 
+-  <local_variable id="var_{{{ _RULE_ID }}}_syslog_config" datatype="string"
+-                  version="1" comment="Locations of all rsyslog configuration files as collection">
++  <local_variable id="var_{{{ _RULE_ID }}}_syslog_config" datatype="string" version="1"
++    comment="Main rsyslog configuration file.">
+     <literal_component datatype="string">^/etc/rsyslog.conf$</literal_component>
+   </local_variable>
+ 
+-  <ind:variable_object id="object_var_{{{ _RULE_ID }}}_syslog_config"
+-                       comment="Make variable object for use" version="1">
++  <ind:variable_object id="object_var_{{{ _RULE_ID }}}_syslog_config" version="1"
++    comment="Make variable object from local variable.">
+     <ind:var_ref>var_{{{ _RULE_ID }}}_syslog_config</ind:var_ref>
+   </ind:variable_object>
+ 
+-  <!-- Combine the two variable_objects into one variable_object
+-       We do it this way to avoid referencing an empty variable in a state comparison, which
+-       will cause a test to evaluate to fail. Combining an empty set of objects is fine though -->
+-  <ind:variable_object id="object_var_{{{ _RULE_ID }}}_all_log_files"
+-                       comment="Filter out empty string" version="1">
++  <!-- Combine the two variable_objects into one variable_object.
++       We do it this way to avoid referencing an empty variable in a state comparison, which will
++       cause a test to evaluate to fail. Combining an empty set of objects is fine though. -->
++  <ind:variable_object id="object_var_{{{ _RULE_ID }}}_all_conf_files" version="1"
++    comment="Variable containing all rsyslog configuration files.">
+     <set>
+       <object_reference>object_var_{{{ _RULE_ID }}}_include_config_regex</object_reference>
+       <object_reference>object_var_{{{ _RULE_ID }}}_syslog_config</object_reference>
+@@ -64,74 +62,72 @@
+ 
+   <!-- In element filepath of object_rfg_log_files_paths we need to pass a list of values,
+        a list of objects won't do. So we make a local_variable from the variable_objects. -->
+-  <local_variable id="var_{{{ _RULE_ID }}}_all_log_files" datatype="string" version="1"
+-                  comment="Locations of all rsyslog configuration files as collection">
+-    <object_component object_ref="object_var_{{{ _RULE_ID }}}_all_log_files" item_field="value"/>
++  <local_variable id="var_{{{ _RULE_ID }}}_all_conf_files" datatype="string" version="1"
++    comment="Locations of all rsyslog configuration files as collection.">
++    <object_component object_ref="object_var_{{{ _RULE_ID }}}_all_conf_files" item_field="value"/>
+   </local_variable>
+ 
+-  <!-- For each item from that collection (particular rsyslog's configuration file path) search
+-       that rsyslog's configuration file to select file paths for log files directives
+-  -->
+-  <ind:textfilecontent54_object id="object_{{{ _RULE_ID }}}_log_files_paths"
+-                                comment="All rsyslog configuration files" version="1">
+-    <ind:filepath operation="pattern match" var_ref="var_{{{ _RULE_ID }}}_all_log_files"
+-                  var_check="at least one" />
+-    <!-- Chunk of text retrieved from rsyslog's configuration file is considered
+-         to constitute a log file path if all of the following conditions are met:
+-         * the string represents a regular file on particular file system
+-           (verified via corresponding file_state below),
+-         * the chunk of text is in the last column in the row,
+-           (possibly suffixed by ';' character and rsyslog Template name),
+-         * contains at least one slash '/' character, and simultaneously
+-           doesn't contain any of ';', ':' and space characters,
+-         * the chunk was retrieved from a row not starting with space, '#',
+-           or '$' characters
+-    -->
+-    <ind:pattern 
+-     operation="pattern match">^\s*[^(\s|#|\$)]+\s+-?[\w\(="\s]*(\/[^:;\s"]+)+.*$</ind:pattern>
++  <!-- For each item from that collection (particular rsyslog's configuration files paths) search
++       that rsyslog's configuration files to select file paths for log files directives -->
++  <ind:textfilecontent54_object id="object_{{{ _RULE_ID }}}_log_files_paths" version="1"
++    comment="All rsyslog log files collected from rsyslog configuration files." >
++    <ind:filepath operation="pattern match" var_check="at least one"
++      var_ref="var_{{{ _RULE_ID }}}_all_conf_files"/>
++      <!-- Chunk of text retrieved from rsyslog's configuration file is considered to constitute
++           a log file path if all of the following conditions are met:
++            * the string represents a regular file on particular file system
++              (verified via corresponding file_state below),
++            * the chunk of text is in the last column in the row,
++              (possibly suffixed by ';' character and rsyslog Template name),
++            * contains at least one slash '/' character, and simultaneously doesn't contain any
++              of ';', ':' and space characters,
++            * the chunk was retrieved from a row not starting with space, '#', or '$' characters
++      -->
++    <ind:pattern
++      operation="pattern match">^\s*[^(\s|#|\$)]+\s+.*\s+-?[\w\(="\s]*(\/[^:;\s"]+)+.*$</ind:pattern>
+     <ind:instance datatype="int" operation="greater than or equal">1</ind:instance>
+-    <filter action="exclude">state_{{{ _RULE_ID }}}_ownership_ignore_include_paths</filter>
++    <filter action="exclude">state_{{{ _RULE_ID }}}_ignore_include_paths</filter>
+   </ind:textfilecontent54_object>
+ 
+-  <ind:textfilecontent54_state id="state_{{{ _RULE_ID }}}_ownership_ignore_include_paths"
+-                               comment="ignore" version="1">
+-    <!-- Among the paths matched in object_rfp_log_files_paths there can be paths from
+-         include() or $IncludeConfig statements.
+-         These paths are conf files, not log files. Their groupownership don't need to be as
+-         required for log files, thus, lets exclude them from the list of objects found
+-    -->
++  <ind:textfilecontent54_state id="state_{{{ _RULE_ID }}}_ignore_include_paths"
++    comment="ignore" version="1">
++    <!-- Among the paths matched in object_{{{ _RULE_ID }}}_log_files_paths there can be paths
++         from include() or $IncludeConfig statements. These paths are conf files, not log files.
++         Their properties don't need to be as required for log files, thus, lets exclude them
++         from the list of objects found. -->
+     <ind:text
+     operation="pattern match">(?:file="[^\s;]+"|\$IncludeConfig[\s]+[^\s;]+|\/dev\/.*)</ind:text>
+   </ind:textfilecontent54_state>
+ 
+   <!-- Define OVAL variable to hold all the various system log files locations
+-       retrieved from the different rsyslog configuration files
+-  -->
++       retrieved from the different rsyslog configuration files. -->
+   <local_variable id="var_{{{ _RULE_ID }}}_log_files_paths" datatype="string" version="1"
+-                  comment="File paths of all rsyslog configuration files">
+-    <object_component item_field="subexpression" object_ref="object_{{{ _RULE_ID }}}_log_files_paths" />
++    comment="File paths of all rsyslog log files">
++    <object_component item_field="subexpression"
++      object_ref="object_{{{ _RULE_ID }}}_log_files_paths" />
+   </local_variable>
+ 
+-  <!-- Perform the test if all rsyslog system log files are owned by the appropriate group -->
+-  <unix:file_test check="all" check_existence="all_exist" id="test_{{{ _RULE_ID }}}" version="1"
+-                  comment="System log files are owned by the appropriate group">
+-    <unix:object object_ref="object_rsyslog_files_{{{ _RULE_ID }}}_ownership" />
++  <!-- Perform the test if all rsyslog system log files have appropriate attribute -->
++  <unix:file_test id="test_{{{ _RULE_ID }}}" check="all" check_existence="all_exist" version="1"
++    comment="System log files have appropriate {{{ ATTRIBUTE }}} set">
++    <unix:object object_ref="object_{{{ _RULE_ID }}}_{{{ ATTRIBUTE }}}" />
+     <unix:state state_ref="state_{{{ _RULE_ID }}}" />
+   </unix:file_test>
+ 
+-  <unix:file_object id="object_rsyslog_files_{{{ _RULE_ID }}}_ownership"
+-                    comment="Various system log files" version="1">
+-    <unix:filepath datatype="string" var_ref="var_{{{ _RULE_ID }}}_log_files_paths"
+-                   var_check="at least one" />
++  <unix:file_object id="object_{{{ _RULE_ID }}}_{{{ ATTRIBUTE }}}" version="1"
++    comment="All system log files collected from rsyslog configuration files">
++    <unix:filepath datatype="string" var_check="at least one"
++      var_ref="var_{{{ _RULE_ID }}}_log_files_paths"/>
+   </unix:file_object>
+ 
+   <unix:file_state id="state_{{{ _RULE_ID }}}" version="1">
+     <unix:type operation="equals">regular</unix:type>
+     {{% if ATTRIBUTE == "groupowner" %}}
+     <unix:group_id datatype="int">{{{ VALUE }}}</unix:group_id>
+-    {{% else %}}
++    {{% elif ATTRIBUTE == "owner" %}}
+     <unix:user_id datatype="int">{{{ VALUE }}}</unix:user_id>
++    {{% else %}}
++    {{{ STATEMODE | indent(4) }}}
+    {{% endif %}}
+   </unix:file_state>
+-
+ </def-group>
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/template.py b/shared/templates/rsyslog_logfiles_attributes_modify/template.py
+new file mode 100644
+index 0000000000..9ea31c9a6b
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/template.py
+@@ -0,0 +1,18 @@
++def preprocess(data, lang):
++    if lang == "oval" and data["attribute"] == 'permissions':
++        # create STATEMODE used in the OVAL template by processing the octal permission and
++        # creating the equivalent permission fields of "unix:file_state" element.
++        mode = data["value"]
++        fields = [
++            'oexec', 'owrite', 'oread', 'gexec', 'gwrite', 'gread',
++            'uexec', 'uwrite', 'uread', 'sticky', 'sgid', 'suid']
++        mode_int = int(mode, 8)
++        mode_str = ""
++        for field in fields:
++            if mode_int & 0x01 == 0:
++                mode_str = (
++                    "<unix:{field} datatype=\"boolean\">false</unix:{field}>\n{mode_str}".format(
++                        field=field, mode_str=mode_str))
++            mode_int = mode_int >> 1
++        data["statemode"] = mode_str.rstrip("\n")
++    return data
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/IncludeConfig_is_other.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/IncludeConfig_is_other.fail.sh
+deleted file mode 100755
+index db7e5261eb..0000000000
+--- a/shared/templates/rsyslog_logfiles_attributes_modify/tests/IncludeConfig_is_other.fail.sh
++++ /dev/null
+@@ -1,50 +0,0 @@
+-#!/bin/bash
+-# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
+-
+-# Check rsyslog.conf with root user log from rules and
+-# non root user log from $IncludeConfig fails.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-{{% if ATTRIBUTE == "owner" %}}
+-ADDCOMMAND="useradd"
+-CHATTR="chown"
+-{{% else %}}
+-ADDCOMMAND="groupadd"
+-CHATTR="chgrp"
+-{{% endif %}}
+-
+-USER_TEST=testssg
+-$ADDCOMMAND $USER_TEST
+-
+-USER_ROOT=root
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files ownership
+-$CHATTR $USER_ROOT ${RSYSLOG_TEST_LOGS[0]}
+-$CHATTR $USER_TEST ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*      ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-\$IncludeConfig ${test_conf}
+-EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_other.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_other.fail.sh
+deleted file mode 100755
+index d79ae23cfc..0000000000
+--- a/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_other.fail.sh
++++ /dev/null
+@@ -1,50 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+-
+-# Check rsyslog.conf with root user log from rules and
+-# non root user log from include() fails.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-{{% if ATTRIBUTE == "owner" %}}
+-ADDCOMMAND="useradd"
+-CHATTR="chown"
+-{{% else %}}
+-ADDCOMMAND="groupadd"
+-CHATTR="chgrp"
+-{{% endif %}}
+-
+-USER_TEST=testssg
+-$ADDCOMMAND $USER_TEST
+-
+-USER_ROOT=root
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files ownership
+-$CHATTR $USER_ROOT ${RSYSLOG_TEST_LOGS[0]}
+-$CHATTR $USER_TEST ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*      ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${test_conf}")
+-EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_other_IncludeConfig_is_other_RainerLogClause.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_other_IncludeConfig_is_other_RainerLogClause.fail.sh
+deleted file mode 100644
+index 7869a180a8..0000000000
+--- a/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_other_IncludeConfig_is_other_RainerLogClause.fail.sh
++++ /dev/null
+@@ -1,75 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+-
+-# Check rsyslog.conf with root user log from rules and
+-# root user log from include() passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-{{% if ATTRIBUTE == "owner" %}}
+-ADDCOMMAND="useradd"
+-CHATTR="chown"
+-{{% else %}}
+-ADDCOMMAND="groupadd"
+-CHATTR="chgrp"
+-{{% endif %}}
+-
+-USER_TEST=testssg
+-$ADDCOMMAND $USER_TEST
+-
+-USER=root
+-
+-# setup test data
+-create_rsyslog_test_logs 3
+-
+-# setup test log files ownership
+-$CHATTR $USER_TEST ${RSYSLOG_TEST_LOGS[0]}
+-$CHATTR $USER_TEST ${RSYSLOG_TEST_LOGS[1]}
+-$CHATTR $USER_TEST ${RSYSLOG_TEST_LOGS[2]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create test2 configuration file
+-test_conf2=${RSYSLOG_TEST_DIR}/test2.conf
+-{{% if ATTRIBUTE == "owner" %}}
+-cat << EOF > ${test_conf2}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-
+-*.*     action(type="omfile" FileCreateMode="0640" fileOwner="$USER_TEST" fileGroup="root" File="${RSYSLOG_TEST_LOGS[2]}")
+-EOF
+-{{% else %}}
+-cat << EOF > ${test_conf2}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-
+-*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="$USER_TEST" File="${RSYSLOG_TEST_LOGS[2]}")
+-EOF
+-{{% endif %}}
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${test_conf}")
+-
+-\$IncludeConfig ${test_conf2}
+-EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root.pass.sh
+deleted file mode 100755
+index e80395ca99..0000000000
+--- a/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root.pass.sh
++++ /dev/null
+@@ -1,46 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+-
+-# Check rsyslog.conf with root user log from rules and
+-# root user log from include() passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-
+-{{% if ATTRIBUTE == "owner" %}}
+-CHATTR="chown"
+-{{% else %}}
+-CHATTR="chgrp"
+-{{% endif %}}
+-
+-USER=root
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files ownership
+-$CHATTR $USER ${RSYSLOG_TEST_LOGS[0]}
+-$CHATTR $USER ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${test_conf}")
+-EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_other.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_other.fail.sh
+deleted file mode 100755
+index e7b4905dc5..0000000000
+--- a/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_other.fail.sh
++++ /dev/null
+@@ -1,63 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+-
+-# Check rsyslog.conf with root user log from rules and
+-# non root user log from include() fails.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-{{% if ATTRIBUTE == "owner" %}}
+-ADDCOMMAND="useradd"
+-CHATTR="chown"
+-{{% else %}}
+-ADDCOMMAND="groupadd"
+-CHATTR="chgrp"
+-{{% endif %}}
+-
+-USER_ROOT=root
+-
+-USER_TEST=testssg
+-$ADDCOMMAND $USER_TEST
+-
+-# setup test data
+-create_rsyslog_test_logs 3
+-
+-# setup test log files ownership
+-$CHATTR $USER_ROOT ${RSYSLOG_TEST_LOGS[0]}
+-$CHATTR $USER_ROOT ${RSYSLOG_TEST_LOGS[1]}
+-$CHATTR $USER_TEST ${RSYSLOG_TEST_LOGS[2]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create test2 configuration file
+-test_conf2=${RSYSLOG_TEST_DIR}/test2.conf
+-cat << EOF > ${test_conf2}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[2]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${test_conf}")
+-
+-\$IncludeConfig ${test_conf2}
+-EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_root.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_root.pass.sh
+deleted file mode 100755
+index 6389e6ea3b..0000000000
+--- a/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_root.pass.sh
++++ /dev/null
+@@ -1,58 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+-
+-# Check rsyslog.conf with root user log from rules and
+-# root user log from include() passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-{{% if ATTRIBUTE == "owner" %}}
+-CHATTR="chown"
+-{{% else %}}
+-CHATTR="chgrp"
+-{{% endif %}}
+-
+-USER=root
+-
+-# setup test data
+-create_rsyslog_test_logs 3
+-
+-# setup test log files ownership
+-$CHATTR $USER ${RSYSLOG_TEST_LOGS[0]}
+-$CHATTR $USER ${RSYSLOG_TEST_LOGS[1]}
+-$CHATTR $USER ${RSYSLOG_TEST_LOGS[2]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create test2 configuration file
+-test_conf2=${RSYSLOG_TEST_DIR}/test2.conf
+-cat << EOF > ${test_conf2}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[2]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${test_conf}")
+-
+-\$IncludeConfig ${test_conf2}
+-EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_root_RainerLogClause.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_root_RainerLogClause.pass.sh
+deleted file mode 100755
+index 6b81a77c2f..0000000000
+--- a/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_root_RainerLogClause.pass.sh
++++ /dev/null
+@@ -1,59 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+-
+-# Check rsyslog.conf with root user log from rules and
+-# root user log from include() passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-{{% if ATTRIBUTE == "owner" %}}
+-CHATTR="chown"
+-{{% else %}}
+-CHATTR="chgrp"
+-{{% endif %}}
+-
+-USER=root
+-
+-# setup test data
+-create_rsyslog_test_logs 3
+-
+-# setup test log files ownership
+-$CHATTR $USER ${RSYSLOG_TEST_LOGS[0]}
+-$CHATTR $USER ${RSYSLOG_TEST_LOGS[1]}
+-$CHATTR $USER ${RSYSLOG_TEST_LOGS[2]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create test2 configuration file
+-test_conf2=${RSYSLOG_TEST_DIR}/test2.conf
+-cat << EOF > ${test_conf2}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-
+-*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="root" File="${RSYSLOG_TEST_LOGS[2]}")
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${test_conf}")
+-
+-\$IncludeConfig ${test_conf2}
+-EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_multiline_is_root.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_multiline_is_root.pass.sh
+deleted file mode 100755
+index 78b105abf3..0000000000
+--- a/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_multiline_is_root.pass.sh
++++ /dev/null
+@@ -1,47 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+-
+-# Check rsyslog.conf with root user log from rules and
+-# root user log from multiline include() passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-{{% if ATTRIBUTE == "owner" %}}
+-CHATTR="chown"
+-{{% else %}}
+-CHATTR="chgrp"
+-{{% endif %}}
+-
+-USER=root
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files ownership
+-$CHATTR $USER ${RSYSLOG_TEST_LOGS[0]}
+-$CHATTR $USER ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(
+-   file="${test_conf}"
+-)
+-EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/is_root.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/is_root.pass.sh
+deleted file mode 100755
+index afce21fa27..0000000000
+--- a/shared/templates/rsyslog_logfiles_attributes_modify/tests/is_root.pass.sh
++++ /dev/null
+@@ -1,30 +0,0 @@
+-#!/bin/bash
+-# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
+-
+-# Check if log file with root user in rsyslog.conf passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-{{% if ATTRIBUTE == "owner" %}}
+-CHATTR="chown"
+-{{% else %}}
+-CHATTR="chgrp"
+-{{% endif %}}
+-
+-USER=root
+-
+-# setup test data
+-create_rsyslog_test_logs 1
+-
+-# setup test log file ownership
+-$CHATTR $USER ${RSYSLOG_TEST_LOGS[0]}
+-
+-# add rule with root user owned log file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*        ${RSYSLOG_TEST_LOGS[0]}
+-
+-EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/is_other.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/legacy_correct_attr.pass.sh
+similarity index 53%
+rename from shared/templates/rsyslog_logfiles_attributes_modify/tests/is_other.fail.sh
+rename to shared/templates/rsyslog_logfiles_attributes_modify/tests/legacy_correct_attr.pass.sh
+index 1afe20823c..dc362ae003 100755
+--- a/shared/templates/rsyslog_logfiles_attributes_modify/tests/is_other.fail.sh
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/legacy_correct_attr.pass.sh
+@@ -1,33 +1,31 @@
+ #!/bin/bash
+ # platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
+ 
+-# Check if log file with non root user in rsyslog.conf fails.
+-
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
+ source $SHARED/rsyslog_log_utils.sh
+ 
+ {{% if ATTRIBUTE == "owner" %}}
+-ADDCOMMAND="useradd"
+ CHATTR="chown"
+-{{% else %}}
+-ADDCOMMAND="groupadd"
++ATTR_VALUE="root"
++{{% elif ATTRIBUTE == "groupowner" %}}
+ CHATTR="chgrp"
++ATTR_VALUE="root"
++{{% else %}}
++CHATTR="chmod"
++ATTR_VALUE="0600"
+ {{% endif %}}
+ 
+-USER=testssg
+-
+-$ADDCOMMAND $USER
+-
+-# setup test data
++# create one test log file
+ create_rsyslog_test_logs 1
+ 
+-# setup test log file ownership
+-$CHATTR $USER ${RSYSLOG_TEST_LOGS[0]}
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
+ 
+-# add rule with non-root user owned log file
++# add rule with test log file
+ cat << EOF > $RSYSLOG_CONF
+ # rsyslog configuration file
+ 
+ #### RULES ####
+-
+ *.*     ${RSYSLOG_TEST_LOGS[0]}
++
+ EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/IncludeConfig_is_root.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/legacy_include_correct_attr.pass.sh
+similarity index 51%
+rename from shared/templates/rsyslog_logfiles_attributes_modify/tests/IncludeConfig_is_root.pass.sh
+rename to shared/templates/rsyslog_logfiles_attributes_modify/tests/legacy_include_correct_attr.pass.sh
+index b03268fe3e..c742f41039 100755
+--- a/shared/templates/rsyslog_logfiles_attributes_modify/tests/IncludeConfig_is_root.pass.sh
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/legacy_include_correct_attr.pass.sh
+@@ -1,45 +1,45 @@
+ #!/bin/bash
+ # platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
+ 
+-# Check rsyslog.conf with root user log from rules and
+-# root user log from $IncludeConfig passes.
+-
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
+ source $SHARED/rsyslog_log_utils.sh
+ 
+ {{% if ATTRIBUTE == "owner" %}}
+ CHATTR="chown"
+-{{% else %}}
++ATTR_VALUE="root"
++{{% elif ATTRIBUTE == "groupowner" %}}
+ CHATTR="chgrp"
++ATTR_VALUE="root"
++{{% else %}}
++CHATTR="chmod"
++ATTR_VALUE="0600"
+ {{% endif %}}
+ 
+-USER=root
+-
+-# setup test data
++# create two test log file
+ create_rsyslog_test_logs 2
+ 
+-# setup test log files ownership
+-$CHATTR $USER ${RSYSLOG_TEST_LOGS[0]}
+-$CHATTR $USER ${RSYSLOG_TEST_LOGS[1]}
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[1]}
+ 
+-# create test configuration file
++# create test configuration file with rule for second test log file
+ test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+ cat << EOF > ${test_conf}
+-# rsyslog configuration file
++# rsyslog test configuration file
+ 
+ #### RULES ####
+-
+ *.*     ${RSYSLOG_TEST_LOGS[1]}
++
+ EOF
+ 
+-# create rsyslog.conf configuration file
++# add rule with first test log file plus an include statement
+ cat << EOF > $RSYSLOG_CONF
+ # rsyslog configuration file
+ 
+ #### RULES ####
+-
+ *.*     ${RSYSLOG_TEST_LOGS[0]}
+ 
+ #### MODULES ####
+-
+ \$IncludeConfig ${test_conf}
++
+ EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/legacy_include_incorrect_attr.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/legacy_include_incorrect_attr.fail.sh
+new file mode 100755
+index 0000000000..a12d0bc653
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/legacy_include_incorrect_attr.fail.sh
+@@ -0,0 +1,50 @@
++#!/bin/bash
++# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testuser"
++useradd $ATTR_INCORRECT_VALUE
++{{% elif ATTRIBUTE == "groupowner" %}}
++CHATTR="chgrp"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testgroup"
++groupadd $ATTR_INCORRECT_VALUE
++{{% else %}}
++CHATTR="chmod"
++ATTR_VALUE="0600"
++ATTR_INCORRECT_VALUE="0666"
++{{% endif %}}
++
++# create two test log file
++create_rsyslog_test_logs 2
++
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $ATTR_INCORRECT_VALUE ${RSYSLOG_TEST_LOGS[1]}
++
++# create test configuration file with rule for second test log file
++test_conf=${RSYSLOG_TEST_DIR}/test1.conf
++cat << EOF > ${test_conf}
++# rsyslog test configuration file
++
++#### RULES ####
++*.*     ${RSYSLOG_TEST_LOGS[1]}
++
++EOF
++
++# add rule with first test log file plus an include statement
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*        ${RSYSLOG_TEST_LOGS[0]}
++
++#### MODULES ####
++\$IncludeConfig ${test_conf}
++
++EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/legacy_incorrect_attr.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/legacy_incorrect_attr.fail.sh
+new file mode 100755
+index 0000000000..25430db033
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/legacy_incorrect_attr.fail.sh
+@@ -0,0 +1,33 @@
++#!/bin/bash
++# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++ATTR_INCORRECT_VALUE="cac_testuser"
++useradd $ATTR_INCORRECT_VALUE
++{{% elif ATTRIBUTE == "groupowner" %}}
++CHATTR="chgrp"
++ATTR_INCORRECT_VALUE="cac_testgroup"
++groupadd $ATTR_INCORRECT_VALUE
++{{% else %}}
++CHATTR="chmod"
++ATTR_INCORRECT_VALUE="0666"
++{{% endif %}}
++
++# create one test log file
++create_rsyslog_test_logs 1
++
++# setup test log file property
++$CHATTR $ATTR_INCORRECT_VALUE ${RSYSLOG_TEST_LOGS[0]}
++
++# add rule with non-root user owned log file
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     ${RSYSLOG_TEST_LOGS[0]}
++
++EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_correct_attr.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_correct_attr.pass.sh
+new file mode 100755
+index 0000000000..c1c5758d80
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_correct_attr.pass.sh
+@@ -0,0 +1,33 @@
++#!/bin/bash
++# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++ATTR_VALUE="root"
++{{% elif ATTRIBUTE == "groupowner" %}}
++CHATTR="chgrp"
++ATTR_VALUE="root"
++{{% else %}}
++CHATTR="chmod"
++ATTR_VALUE="0600"
++{{% endif %}}
++
++# create three test log file
++create_rsyslog_test_logs 2
++
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[1]}
++
++# add rules with both syntax for different test log files
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     ${RSYSLOG_TEST_LOGS[0]}
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[1]}")
++
++EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_include_correct_attr.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_include_correct_attr.pass.sh
+new file mode 100755
+index 0000000000..0235130534
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_include_correct_attr.pass.sh
+@@ -0,0 +1,58 @@
++#!/bin/bash
++# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++ATTR_VALUE="root"
++{{% elif ATTRIBUTE == "groupowner" %}}
++CHATTR="chgrp"
++ATTR_VALUE="root"
++{{% else %}}
++CHATTR="chmod"
++ATTR_VALUE="0600"
++{{% endif %}}
++
++# create three test log file
++create_rsyslog_test_logs 3
++
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[1]}
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[2]}
++
++# create first test configuration file with legacy rule for second test log file
++test_conf1=${RSYSLOG_TEST_DIR}/legacy.conf
++cat << EOF > ${test_conf1}
++# rsyslog test configuration file with legacy syntax
++
++#### RULES ####
++*.*     ${RSYSLOG_TEST_LOGS[1]}
++
++EOF
++
++# create second test configuration file with RainerScript rule for third test log file
++test_conf2=${RSYSLOG_TEST_DIR}/rainerscript.conf
++cat << EOF > ${test_conf2}
++# rsyslog test configuration file with RainerScript syntax
++
++#### RULES ####
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[2]}")
++
++EOF
++
++# add rule with first test log file plus two mixed include statement
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     ${RSYSLOG_TEST_LOGS[0]}
++
++#### MODULES ####
++\$IncludeConfig ${test_conf1}
++
++include(file="${test_conf2}")
++
++EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_include_incorrect_attr_legacy.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_include_incorrect_attr_legacy.fail.sh
+new file mode 100755
+index 0000000000..bed0afaf5e
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_include_incorrect_attr_legacy.fail.sh
+@@ -0,0 +1,63 @@
++#!/bin/bash
++# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testuser"
++useradd $ATTR_INCORRECT_VALUE
++{{% elif ATTRIBUTE == "groupowner" %}}
++CHATTR="chgrp"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testgroup"
++groupadd $ATTR_INCORRECT_VALUE
++{{% else %}}
++CHATTR="chmod"
++ATTR_VALUE="0600"
++ATTR_INCORRECT_VALUE="0666"
++{{% endif %}}
++
++# create three test log file
++create_rsyslog_test_logs 3
++
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $ATTR_INCORRECT_VALUE ${RSYSLOG_TEST_LOGS[1]}
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[2]}
++
++# create first test configuration file with legacy rule for second test log file
++test_conf1=${RSYSLOG_TEST_DIR}/legacy.conf
++cat << EOF > ${test_conf1}
++# rsyslog test configuration file with legacy syntax
++
++#### RULES ####
++*.*     ${RSYSLOG_TEST_LOGS[1]}
++
++EOF
++
++# create second test configuration file with RainerScript rule for third test log file
++test_conf2=${RSYSLOG_TEST_DIR}/rainerscript.conf
++cat << EOF > ${test_conf2}
++# rsyslog test configuration file with RainerScript syntax
++
++#### RULES ####
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[2]}")
++
++EOF
++
++# add rule with first test log file plus two mixed include statement
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     ${RSYSLOG_TEST_LOGS[0]}
++
++#### MODULES ####
++\$IncludeConfig ${test_conf1}
++
++include(file="${test_conf2}")
++
++EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_include_incorrect_attr_rainer.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_include_incorrect_attr_rainer.fail.sh
+new file mode 100755
+index 0000000000..83c69b3a17
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_include_incorrect_attr_rainer.fail.sh
+@@ -0,0 +1,63 @@
++#!/bin/bash
++# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testuser"
++useradd $ATTR_INCORRECT_VALUE
++{{% elif ATTRIBUTE == "groupowner" %}}
++CHATTR="chgrp"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testgroup"
++groupadd $ATTR_INCORRECT_VALUE
++{{% else %}}
++CHATTR="chmod"
++ATTR_VALUE="0600"
++ATTR_INCORRECT_VALUE="0666"
++{{% endif %}}
++
++# create three test log file
++create_rsyslog_test_logs 3
++
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[1]}
++$CHATTR $ATTR_INCORRECT_VALUE ${RSYSLOG_TEST_LOGS[2]}
++
++# create first test configuration file with legacy rule for second test log file
++test_conf1=${RSYSLOG_TEST_DIR}/legacy.conf
++cat << EOF > ${test_conf1}
++# rsyslog test configuration file with legacy syntax
++
++#### RULES ####
++*.*     ${RSYSLOG_TEST_LOGS[1]}
++
++EOF
++
++# create second test configuration file with RainerScript rule for third test log file
++test_conf2=${RSYSLOG_TEST_DIR}/rainerscript.conf
++cat << EOF > ${test_conf2}
++# rsyslog test configuration file with RainerScript syntax
++
++#### RULES ####
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[2]}")
++
++EOF
++
++# add rule with first test log file plus two mixed include statement
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     ${RSYSLOG_TEST_LOGS[0]}
++
++#### MODULES ####
++\$IncludeConfig ${test_conf1}
++
++include(file="${test_conf2}")
++
++EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_incorrect_attr_cloudinit.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_incorrect_attr_cloudinit.fail.sh
+new file mode 100755
+index 0000000000..43a6f2648d
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_incorrect_attr_cloudinit.fail.sh
+@@ -0,0 +1,38 @@
++#!/bin/bash
++# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testuser"
++useradd $ATTR_INCORRECT_VALUE
++{{% elif ATTRIBUTE == "groupowner" %}}
++CHATTR="chgrp"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testgroup"
++groupadd $ATTR_INCORRECT_VALUE
++{{% else %}}
++CHATTR="chmod"
++ATTR_VALUE="0600"
++ATTR_INCORRECT_VALUE="0666"
++{{% endif %}}
++
++# create three test log file
++create_rsyslog_test_logs 2
++
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $ATTR_INCORRECT_VALUE ${RSYSLOG_TEST_LOGS[1]}
++
++# add rules with both syntax for different test log files
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     ${RSYSLOG_TEST_LOGS[0]}
++:syslogtag, isequal, "[CLOUDINIT]" ${RSYSLOG_TEST_LOGS[1]}
++
++EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_incorrect_attr_legacy.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_incorrect_attr_legacy.fail.sh
+new file mode 100755
+index 0000000000..f459e7377b
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_incorrect_attr_legacy.fail.sh
+@@ -0,0 +1,38 @@
++#!/bin/bash
++# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testuser"
++useradd $ATTR_INCORRECT_VALUE
++{{% elif ATTRIBUTE == "groupowner" %}}
++CHATTR="chgrp"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testgroup"
++groupadd $ATTR_INCORRECT_VALUE
++{{% else %}}
++CHATTR="chmod"
++ATTR_VALUE="0600"
++ATTR_INCORRECT_VALUE="0666"
++{{% endif %}}
++
++# create three test log file
++create_rsyslog_test_logs 2
++
++# setup test log file property
++$CHATTR $ATTR_INCORRECT_VALUE ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[1]}
++
++# add rules with both syntax for different test log files
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     ${RSYSLOG_TEST_LOGS[0]}
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[1]}")
++
++EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_incorrect_attr_rainer.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_incorrect_attr_rainer.fail.sh
+new file mode 100755
+index 0000000000..67193b69d8
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/mixed_incorrect_attr_rainer.fail.sh
+@@ -0,0 +1,38 @@
++#!/bin/bash
++# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testuser"
++useradd $ATTR_INCORRECT_VALUE
++{{% elif ATTRIBUTE == "groupowner" %}}
++CHATTR="chgrp"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testgroup"
++groupadd $ATTR_INCORRECT_VALUE
++{{% else %}}
++CHATTR="chmod"
++ATTR_VALUE="0600"
++ATTR_INCORRECT_VALUE="0666"
++{{% endif %}}
++
++# create three test log file
++create_rsyslog_test_logs 2
++
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $ATTR_INCORRECT_VALUE ${RSYSLOG_TEST_LOGS[1]}
++
++# add rules with both syntax for different test log files
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     ${RSYSLOG_TEST_LOGS[0]}
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[1]}")
++
++EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_correct_attr.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_correct_attr.pass.sh
+new file mode 100755
+index 0000000000..abdb09c485
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_correct_attr.pass.sh
+@@ -0,0 +1,31 @@
++#!/bin/bash
++# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++ATTR_VALUE="root"
++{{% elif ATTRIBUTE == "groupowner" %}}
++CHATTR="chgrp"
++ATTR_VALUE="root"
++{{% else %}}
++CHATTR="chmod"
++ATTR_VALUE="0600"
++{{% endif %}}
++
++# create one test log file
++create_rsyslog_test_logs 1
++
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
++
++# add rule with test log file
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[0]}")
++
++EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_correct_attr.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_correct_attr.pass.sh
+new file mode 100755
+index 0000000000..8b73578e39
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_correct_attr.pass.sh
+@@ -0,0 +1,45 @@
++#!/bin/bash
++# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++ATTR_VALUE="root"
++{{% elif ATTRIBUTE == "groupowner" %}}
++CHATTR="chgrp"
++ATTR_VALUE="root"
++{{% else %}}
++CHATTR="chmod"
++ATTR_VALUE="0600"
++{{% endif %}}
++
++# create two test log file
++create_rsyslog_test_logs 2
++
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[1]}
++
++# create test configuration file with rule for second test log file
++test_conf=${RSYSLOG_TEST_DIR}/test1.conf
++cat << EOF > ${test_conf}
++# rsyslog test configuration file
++
++#### RULES ####
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[1]}")
++
++EOF
++
++# add rule with first test log file plus an include statement
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[0]}")
++
++#### MODULES ####
++include(file="${test_conf}")
++
++EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_incorrect_attr.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_incorrect_attr.fail.sh
+new file mode 100755
+index 0000000000..4c25c09e2e
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_incorrect_attr.fail.sh
+@@ -0,0 +1,50 @@
++#!/bin/bash
++# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testuser"
++useradd $ATTR_INCORRECT_VALUE
++{{% elif ATTRIBUTE == "groupowner" %}}
++CHATTR="chgrp"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testgroup"
++groupadd $ATTR_INCORRECT_VALUE
++{{% else %}}
++CHATTR="chmod"
++ATTR_VALUE="0600"
++ATTR_INCORRECT_VALUE="0666"
++{{% endif %}}
++
++# create two test log file
++create_rsyslog_test_logs 2
++
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $ATTR_INCORRECT_VALUE ${RSYSLOG_TEST_LOGS[1]}
++
++# create test configuration file with rule for second test log file
++test_conf=${RSYSLOG_TEST_DIR}/test1.conf
++cat << EOF > ${test_conf}
++# rsyslog test configuration file
++
++#### RULES ####
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[1]}")
++
++EOF
++
++# add rule with first test log file plus an include statement
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[0]}")
++
++#### MODULES ####
++include(file="${test_conf}")
++
++EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_multiline_correct_attr.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_multiline_correct_attr.pass.sh
+new file mode 100755
+index 0000000000..508a5cf6eb
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_multiline_correct_attr.pass.sh
+@@ -0,0 +1,47 @@
++#!/bin/bash
++# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++ATTR_VALUE="root"
++{{% elif ATTRIBUTE == "groupowner" %}}
++CHATTR="chgrp"
++ATTR_VALUE="root"
++{{% else %}}
++CHATTR="chmod"
++ATTR_VALUE="0600"
++{{% endif %}}
++
++# create two test log file
++create_rsyslog_test_logs 2
++
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[1]}
++
++# create test configuration file with rule for second test log file
++test_conf=${RSYSLOG_TEST_DIR}/test1.conf
++cat << EOF > ${test_conf}
++# rsyslog test configuration file
++
++#### RULES ####
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[1]}")
++
++EOF
++
++# add rule with first test log file plus an include statement
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[0]}")
++
++#### MODULES ####
++include(
++   file="${test_conf}"
++)
++
++EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_multiline_incorrect_attr.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_multiline_incorrect_attr.fail.sh
+new file mode 100755
+index 0000000000..49fada4cd4
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_include_multiline_incorrect_attr.fail.sh
+@@ -0,0 +1,52 @@
++#!/bin/bash
++# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testuser"
++useradd $ATTR_INCORRECT_VALUE
++{{% elif ATTRIBUTE == "groupowner" %}}
++CHATTR="chgrp"
++ATTR_VALUE="root"
++ATTR_INCORRECT_VALUE="cac_testgroup"
++groupadd $ATTR_INCORRECT_VALUE
++{{% else %}}
++CHATTR="chmod"
++ATTR_VALUE="0600"
++ATTR_INCORRECT_VALUE="0666"
++{{% endif %}}
++
++# create two test log file
++create_rsyslog_test_logs 2
++
++# setup test log file property
++$CHATTR $ATTR_VALUE ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $ATTR_INCORRECT_VALUE ${RSYSLOG_TEST_LOGS[1]}
++
++# create test configuration file with rule for second test log file
++test_conf=${RSYSLOG_TEST_DIR}/test1.conf
++cat << EOF > ${test_conf}
++# rsyslog test configuration file
++
++#### RULES ####
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[1]}")
++
++EOF
++
++# add rule with first test log file plus an include statement
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[0]}")
++
++#### MODULES ####
++include(
++   file="${test_conf}"
++)
++
++EOF
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_incorrect_attr.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_incorrect_attr.fail.sh
+new file mode 100755
+index 0000000000..b17eb6b744
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/rainer_incorrect_attr.fail.sh
+@@ -0,0 +1,33 @@
++#!/bin/bash
++# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
++
++# Declare variables used for the tests and define the create_rsyslog_test_logs function
++source $SHARED/rsyslog_log_utils.sh
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++ATTR_INCORRECT_VALUE="cac_testuser"
++useradd $ATTR_INCORRECT_VALUE
++{{% elif ATTRIBUTE == "groupowner" %}}
++CHATTR="chgrp"
++ATTR_INCORRECT_VALUE="cac_testgroup"
++groupadd $ATTR_INCORRECT_VALUE
++{{% else %}}
++CHATTR="chmod"
++ATTR_INCORRECT_VALUE="0666"
++{{% endif %}}
++
++# create one test log file
++create_rsyslog_test_logs 1
++
++# setup test log file property
++$CHATTR $ATTR_INCORRECT_VALUE ${RSYSLOG_TEST_LOGS[0]}
++
++# add rule with non-root user owned log file
++cat << EOF > $RSYSLOG_CONF
++# rsyslog configuration file
++
++#### RULES ####
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="hoiadm" File="${RSYSLOG_TEST_LOGS[0]}")
++
++EOF
+-- 
+2.39.1
+

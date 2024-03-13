@@ -1,0 +1,389 @@
+From f90880f4e4ad1b1a50ccb7498af667571da1b0f6 Mon Sep 17 00:00:00 2001
+From: Louis Abel <label@rockylinux.org>
+Date: Fri, 17 Feb 2023 22:52:40 -0700
+Subject: [PATCH] Add Rocky Linux as a derivative of RHEL
+
+---
+ CMakeLists.txt                                |  1 +
+ build-scripts/enable_derivatives.py           | 18 +++++--
+ build_product                                 |  1 +
+ .../oval/shared.xml                           | 21 +++++++++
+ products/rhel8/CMakeLists.txt                 |  4 ++
+ products/rhel8/product.yml                    |  4 ++
+ products/rhel9/CMakeLists.txt                 |  4 ++
+ products/rhel9/product.yml                    |  4 ++
+ shared/applicability/rl8.yml                  |  3 ++
+ shared/applicability/rl9.yml                  |  3 ++
+ shared/checks/oval/installed_OS_is_rl8.xml    | 47 +++++++++++++++++++
+ shared/checks/oval/installed_OS_is_rl9.xml    | 47 +++++++++++++++++++
+ ssg/constants.py                              | 44 +++++++++++++++++
+ 13 files changed, 198 insertions(+), 3 deletions(-)
+ create mode 100644 shared/applicability/rl8.yml
+ create mode 100644 shared/applicability/rl9.yml
+ create mode 100644 shared/checks/oval/installed_OS_is_rl8.xml
+ create mode 100644 shared/checks/oval/installed_OS_is_rl9.xml
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index ab11e31..3bfe582 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -98,6 +98,7 @@ option(SSG_PRODUCT_UOS20 "If enabled, the Uos 20 SCAP content will be built" ${S
+ 
+ 
+ option(SSG_CENTOS_DERIVATIVES_ENABLED "If enabled, CentOS derivative content will be built from the RHEL content" TRUE)
++option(SSG_ROCKY_LINUX_DERIVATIVES_ENABLED "If enabled, Rocky Linux derivative content will be built from the RHEL content" TRUE)
+ option(SSG_SCIENTIFIC_LINUX_DERIVATIVES_ENABLED "If enabled, Scientific Linux derivative content will be built from the RHEL content" TRUE)
+ 
+ option(FORCE_VALIDATE_EVERYTHING "If enabled, perform all validation tests regardless of oscap version requirements. By default, the build system may not perform validation of some content types if the openscap used to build it is not up-to-date" FALSE)
+diff --git a/build-scripts/enable_derivatives.py b/build-scripts/enable_derivatives.py
+index 2c82f8f..0e75448 100755
+--- a/build-scripts/enable_derivatives.py
++++ b/build-scripts/enable_derivatives.py
+@@ -25,9 +25,11 @@ XCCDF12_NS = ssg.constants.XCCDF12_NS
+ oval_ns = ssg.constants.oval_namespace
+ 
+ CENTOS_NOTICE_ELEMENT = ssg.xml.ElementTree.fromstring(ssg.constants.CENTOS_NOTICE)
++ROCKY_LINUX_NOTICE_ELEMENT = ssg.xml.ElementTree.fromstring(ssg.constants.ROCKY_LINUX_NOTICE)
+ SL_NOTICE_ELEMENT = ssg.xml.ElementTree.fromstring(ssg.constants.SL_NOTICE)
+ 
+ CENTOS_WARNING = 'centos_warning'
++ROCKY_LINUX_WARNING = 'rocky_linux_warning'
+ SL_WARNING = 'sl_warning'
+ 
+ 
+@@ -36,6 +38,8 @@ def parse_args():
+     parser = OptionParser(usage=usage)
+     parser.add_option("--enable-centos", dest="centos", default=False,
+                       action="store_true", help="Enable CentOS")
++    parser.add_option("--enable-rl", dest="rl", default=False,
++                      action="store_true", help="Enable Rocky Linux")
+     parser.add_option("--enable-sl", dest="sl", default=False,
+                       action="store_true", help="Enable Scientific Linux")
+     parser.add_option("-i", "--input", dest="input_content", default=False,
+@@ -50,9 +54,9 @@ def parse_args():
+         dest="cpe_items_dir", help="path to the directory where compiled cpe items are stored")
+     (options, args) = parser.parse_args()
+ 
+-    if options.centos and options.sl:
++    if options.centos + options.rl + options.sl >= 2:
+         sys.stderr.write(
+-            "Cannot enable two derivative OS(s) at the same time\n"
++            "Cannot enable two or more derivative OS(s) at the same time\n"
+         )
+         parser.print_help()
+         sys.exit(1)
+@@ -78,6 +82,12 @@ def main():
+         warning = SL_WARNING
+         derivative = "Scientific Linux"
+ 
++    if options.rl:
++        mapping = ssg.constants.RHEL_ROCKY_LINUX_CPE_MAPPING
++        notice = ROCKY_LINUX_NOTICE_ELEMENT
++        warning = ROCKY_LINUX_WARNING
++        derivative = "Rocky Linux"
++
+     tree = ssg.xml.open_xml(options.input_content)
+     root = tree.getroot()
+ 
+@@ -94,9 +104,11 @@ def main():
+         raise RuntimeError("No Benchmark found!")
+ 
+     for namespace, benchmark in benchmarks:
+-        if args[1] != "cs9" and not args[1].startswith("centos"):
++        if args[1] not in ('rl8', 'rl9', 'cs9') and not args[1].startswith("centos"):
+             # In all CentOS and CentOS Streams, profiles are kept because they are systems
+             # intended to test content that will get into RHEL
++            # Rocky Linux are also derivatives and this hopefully builds the
++            # content. It's not clear if there's a better way to do this.
+             ssg.build_derivatives.profile_handling(benchmark, namespace)
+         if not ssg.build_derivatives.add_cpes(benchmark, namespace, mapping):
+             raise RuntimeError(
+diff --git a/build_product b/build_product
+index fc793cb..a8dbdb1 100755
+--- a/build_product
++++ b/build_product
+@@ -288,6 +288,7 @@ set_no_derivatives_options() {
+ 	test "$_arg_derivatives" = on && return
+ 	if grep -q 'rhel' <<< "${_arg_product[*]}"; then
+ 		CMAKE_OPTIONS+=("-DSSG_CENTOS_DERIVATIVES_ENABLED:BOOL=OFF")
++		CMAKE_OPTIONS+=("-DSSG_ROCKY_LINUX_DERIVATIVES_ENABLED:BOOL=OFF")
+ 	fi
+ 	if grep -q 'rhel7' <<< "${_arg_product[*]}"; then
+ 		CMAKE_OPTIONS+=("-DSSG_SCIENTIFIC_LINUX_DERIVATIVES_ENABLED:BOOL=OFF")
+diff --git a/linux_os/guide/system/software/updating/ensure_redhat_gpgkey_installed/oval/shared.xml b/linux_os/guide/system/software/updating/ensure_redhat_gpgkey_installed/oval/shared.xml
+index dd514ad..ea5b86e 100644
+--- a/linux_os/guide/system/software/updating/ensure_redhat_gpgkey_installed/oval/shared.xml
++++ b/linux_os/guide/system/software/updating/ensure_redhat_gpgkey_installed/oval/shared.xml
+@@ -25,6 +25,13 @@
+         test_ref="test_package_gpgkey-{{{ centos_pkg_version }}}-{{{ centos_pkg_release }}}_installed" />
+       </criteria>
+       {{%- endif %}}
++      {{%- if rl_major_version %}}
++      <criteria comment="Rocky Linux Vendor Keys" operator="AND">
++        <extend_definition comment="Rocky Linux {{{ rl_major_version }}} installed" definition_ref="installed_OS_is_rl{{{ rl_major_version }}}" />
++        <criterion comment="package gpg-pubkey-{{{ rl_pkg_version }}}-{{{ rl_pkg_release }}} is installed"
++        test_ref="test_package_gpgkey-{{{ rl_pkg_version }}}-{{{ rl_pkg_release }}}_installed" />
++      </criteria>
++      {{%- endif %}}
+     </criteria>
+   </definition>
+ 
+@@ -74,5 +81,19 @@
+   </linux:rpminfo_state>
+   {{%- endif %}}
+ 
++  {{%- if rl_major_version %}}
++  <linux:rpminfo_test check="only one" check_existence="at_least_one_exists"
++  id="test_package_gpgkey-{{{ rl_pkg_version }}}-{{{ rl_pkg_release }}}_installed" version="1"
++  comment="Rocky Linux {{{ rl_major_version }}} key package is installed">
++    <linux:object object_ref="object_package_gpg-pubkey" />
++    <linux:state state_ref="state_package_gpg-pubkey-{{{ rl_pkg_version }}}-{{{ rl_pkg_release }}}" />
++  </linux:rpminfo_test>
++
++  <linux:rpminfo_state id="state_package_gpg-pubkey-{{{ rl_pkg_version }}}-{{{ rl_pkg_release }}}" version="1">
++    <linux:release>{{{ rl_pkg_release }}}</linux:release>
++    <linux:version>{{{ rl_pkg_version }}}</linux:version>
++  </linux:rpminfo_state>
++  {{%- endif %}}
++
+ </def-group>
+ {{% endif %}}
+diff --git a/products/rhel8/CMakeLists.txt b/products/rhel8/CMakeLists.txt
+index 8f6ca03..97c38ac 100644
+--- a/products/rhel8/CMakeLists.txt
++++ b/products/rhel8/CMakeLists.txt
+@@ -30,3 +30,7 @@ ssg_build_html_stig_tables_per_profile( ${PRODUCT} "stig_gui")
+ if (SSG_CENTOS_DERIVATIVES_ENABLED)
+     ssg_build_derivative_product(${PRODUCT} "centos" "centos8")
+ endif()
++
++if (SSG_ROCKY_LINUX_DERIVATIVES_ENABLED)
++    ssg_build_derivative_product(${PRODUCT} "rl" "rl8")
++endif()
+diff --git a/products/rhel8/product.yml b/products/rhel8/product.yml
+index 447f68d..449ce94 100644
+--- a/products/rhel8/product.yml
++++ b/products/rhel8/product.yml
+@@ -100,5 +100,9 @@ centos_pkg_release: "5ccc5b19"
+ centos_pkg_version: "8483c65d"
+ centos_major_version: "8"
+ 
++rl_pkg_release: "60287f36"
++rl_pkg_version: "6d745a60"
++rl_major_version: "8"
++
+ reference_uris:
+   cis: 'https://www.cisecurity.org/benchmark/red_hat_linux/'
+diff --git a/products/rhel9/CMakeLists.txt b/products/rhel9/CMakeLists.txt
+index e4dc662..2185bce 100644
+--- a/products/rhel9/CMakeLists.txt
++++ b/products/rhel9/CMakeLists.txt
+@@ -22,3 +22,7 @@ endif()
+ if (SSG_CENTOS_DERIVATIVES_ENABLED)
+     ssg_build_derivative_product(${PRODUCT} "centos" "cs9")
+ endif()
++
++if (SSG_ROCKY_LINUX_DERIVATIVES_ENABLED)
++    ssg_build_derivative_product(${PRODUCT} "rl" "rl9")
++endif()
+diff --git a/products/rhel9/product.yml b/products/rhel9/product.yml
+index 050c3dc..dca88ea 100644
+--- a/products/rhel9/product.yml
++++ b/products/rhel9/product.yml
+@@ -52,3 +52,7 @@ reference_uris:
+ centos_pkg_release: "5ccc5b19"
+ centos_pkg_version: "8483c65d"
+ centos_major_version: "9"
++
++rl_pkg_release: "6279464b"
++rl_pkg_version: "350d275d"
++rl_major_version: "9"
+diff --git a/shared/applicability/rl8.yml b/shared/applicability/rl8.yml
+new file mode 100644
+index 0000000..8c8d414
+--- /dev/null
++++ b/shared/applicability/rl8.yml
+@@ -0,0 +1,3 @@
++name: cpe:/o:rocky:rocky:8
++title: Rocky Linux 8
++check_id: installed_OS_is_rl8
+diff --git a/shared/applicability/rl9.yml b/shared/applicability/rl9.yml
+new file mode 100644
+index 0000000..be86472
+--- /dev/null
++++ b/shared/applicability/rl9.yml
+@@ -0,0 +1,3 @@
++name: cpe:/o:rocky:rocky:9
++title: Rocky Linux 9
++check_id: installed_OS_is_rl9
+diff --git a/shared/checks/oval/installed_OS_is_rl8.xml b/shared/checks/oval/installed_OS_is_rl8.xml
+new file mode 100644
+index 0000000..63bc581
+--- /dev/null
++++ b/shared/checks/oval/installed_OS_is_rl8.xml
+@@ -0,0 +1,47 @@
++<def-group>
++  <definition class="inventory"
++  id="installed_OS_is_rl8" version="2">
++    <metadata>
++      <title>Rocky Linux 8</title>
++      <affected family="unix">
++        <platform>multi_platform_all</platform>
++      </affected>
++      <reference ref_id="cpe:/o:rocky:rocky:8"
++      source="CPE" />
++      <description>The operating system installed on the system is
++      Rocky Linux 8</description>
++    </metadata>
++    <criteria operator="AND">
++      <extend_definition comment="Installed OS is part of the Unix family"
++      definition_ref="installed_OS_is_part_of_Unix_family" />
++      <criterion comment="OS is Rocky Linux" test_ref="test_rl8_name" />
++      <criterion comment="OS version is 8" test_ref="test_rl8_version" />
++    </criteria>
++  </definition>
++
++  <ind:textfilecontent54_test check="all" check_existence="at_least_one_exists" comment="Check os-release ID" id="test_rl8_name" version="1">
++    <ind:object object_ref="obj_name_rl8" />
++    <ind:state state_ref="state_name_rl8" />
++  </ind:textfilecontent54_test>
++  <ind:textfilecontent54_object id="obj_name_rl8" version="1" comment="Check os-release ID">
++    <ind:filepath>/etc/os-release</ind:filepath>
++    <ind:pattern operation="pattern match">^ID=&quot;(\w+)&quot;$</ind:pattern>
++    <ind:instance datatype="int">1</ind:instance>
++  </ind:textfilecontent54_object>
++  <ind:textfilecontent54_state id="state_name_rl8" version="1">
++    <ind:subexpression>rocky</ind:subexpression>
++  </ind:textfilecontent54_state>
++
++  <ind:textfilecontent54_test check="all" comment="Check os-release VERSION_ID" id="test_rl8_version" version="1">
++    <ind:object object_ref="obj_version_rl8" />
++    <ind:state state_ref="state_version_rl8" />
++  </ind:textfilecontent54_test>
++  <ind:textfilecontent54_object id="obj_version_rl8" version="1" comment="Check os-release VERSION_ID">
++    <ind:filepath>/etc/os-release</ind:filepath>
++    <ind:pattern operation="pattern match">^VERSION_ID=&quot;(\d).\d+&quot;$</ind:pattern>
++    <ind:instance datatype="int">1</ind:instance>
++  </ind:textfilecontent54_object>
++  <ind:textfilecontent54_state id="state_version_rl8" version="1">
++    <ind:subexpression>8</ind:subexpression>
++  </ind:textfilecontent54_state>
++</def-group>
+diff --git a/shared/checks/oval/installed_OS_is_rl9.xml b/shared/checks/oval/installed_OS_is_rl9.xml
+new file mode 100644
+index 0000000..9b9db5f
+--- /dev/null
++++ b/shared/checks/oval/installed_OS_is_rl9.xml
+@@ -0,0 +1,47 @@
++<def-group>
++  <definition class="inventory"
++  id="installed_OS_is_rl9" version="2">
++    <metadata>
++      <title>Rocky Linux 9</title>
++      <affected family="unix">
++        <platform>multi_platform_all</platform>
++      </affected>
++      <reference ref_id="cpe:/o:rocky:rocky:9"
++      source="CPE" />
++      <description>The operating system installed on the system is
++      Rocky Linux 9</description>
++    </metadata>
++    <criteria operator="AND">
++      <extend_definition comment="Installed OS is part of the Unix family"
++      definition_ref="installed_OS_is_part_of_Unix_family" />
++      <criterion comment="OS is Rocky Linux" test_ref="test_rl9_name" />
++      <criterion comment="OS version is 9" test_ref="test_rl9_version" />
++    </criteria>
++  </definition>
++
++  <ind:textfilecontent54_test check="all" check_existence="at_least_one_exists" comment="Check os-release ID" id="test_rl9_name" version="1">
++    <ind:object object_ref="obj_name_rl9" />
++    <ind:state state_ref="state_name_rl9" />
++  </ind:textfilecontent54_test>
++  <ind:textfilecontent54_object id="obj_name_rl9" version="1" comment="Check os-release ID">
++    <ind:filepath>/etc/os-release</ind:filepath>
++    <ind:pattern operation="pattern match">^ID=&quot;(\w+)&quot;$</ind:pattern>
++    <ind:instance datatype="int">1</ind:instance>
++  </ind:textfilecontent54_object>
++  <ind:textfilecontent54_state id="state_name_rl9" version="1">
++    <ind:subexpression>rocky</ind:subexpression>
++  </ind:textfilecontent54_state>
++
++  <ind:textfilecontent54_test check="all" comment="Check os-release VERSION_ID" id="test_rl9_version" version="1">
++    <ind:object object_ref="obj_version_rl9" />
++    <ind:state state_ref="state_version_rl9" />
++  </ind:textfilecontent54_test>
++  <ind:textfilecontent54_object id="obj_version_rl9" version="1" comment="Check os-release VERSION_ID">
++    <ind:filepath>/etc/os-release</ind:filepath>
++    <ind:pattern operation="pattern match">^VERSION_ID=&quot;(\d).\d+&quot;$</ind:pattern>
++    <ind:instance datatype="int">1</ind:instance>
++  </ind:textfilecontent54_object>
++  <ind:textfilecontent54_state id="state_version_rl9" version="1">
++    <ind:subexpression>9</ind:subexpression>
++  </ind:textfilecontent54_state>
++</def-group>
+diff --git a/ssg/constants.py b/ssg/constants.py
+index 82520c3..9ec042c 100644
+--- a/ssg/constants.py
++++ b/ssg/constants.py
+@@ -293,6 +293,11 @@ RHEL_CENTOS_CPE_MAPPING = {
+     "cpe:/o:redhat:enterprise_linux:9": "cpe:/o:centos:centos:9",
+ }
+ 
++RHEL_ROCKY_LINUX_CPE_MAPPING = {
++    "cpe:/o:redhat:enterprise_linux:8": "cpe:/o:rocky:rocky:8",
++    "cpe:/o:redhat:enterprise_linux:9": "cpe:/o:rocky:rocky:9",
++}
++
+ RHEL_SL_CPE_MAPPING = {
+     "cpe:/o:redhat:enterprise_linux:7": "cpe:/o:scientificlinux:scientificlinux:7",
+ }
+@@ -332,6 +337,45 @@ CENTOS_NOTICE = \
+     ".</p>" \
+     "</div>"
+ 
++ROCKY_LINUX_NOTICE = \
++    "<div xmlns=\"http://www.w3.org/1999/xhtml\">\n" \
++    "<p>This benchmark is a direct port of a <i>SCAP Security Guide </i> " \
++    "benchmark developed for <i>Red Hat Enterprise Linux</i>. It has been " \
++    "modified through an automated process to remove specific dependencies " \
++    "on <i>Red Hat Enterprise Linux</i> and to function with <i>Rocky Linux</i>. " \
++    "The result is a generally useful <i>SCAP Security Guide</i> benchmark " \
++    "with the following caveats:</p>\n" \
++    "<ul>\n" \
++    "<li><i>Rocky Linux</i> is not an exact copy of " \
++    "<i>Red Hat Enterprise Linux</i>. There may be configuration differences " \
++    "that produce false positives and/or false negatives. If this occurs " \
++    "please file a bug report.</li>\n" \
++    "\n" \
++    "<li><i>Rocky Linux</i> is a Linux distribution produced by the " \
++    "<i>Rocky Enterprise Software Foundation</i>. It is a free and open source " \
++    "operating system based on <i>Red Hat Enterprise Linux</i> with the goal \"to " \
++    "be 100% bug-for-bug compatible\" with its upstream commercial distribution. " \
++    "<i>Rocky Linux</i> has its own build system, compiler options, patchsets, " \
++    "and is a community supported, non-commercial operating system. " \
++    "<i>Rocky Linux</i> does not inherit certifications or evaluations from " \
++    "<i>Red Hat Enterprise Linux</i>. As such, some configuration rules (such as " \
++    "those requiring <i>FIPS 140-2</i> encryption) will continue to fail on " \
++    "<i>Rocky Linux</i>.</li>" \
++    "</ul>\n" \
++    "\n" \
++    "<p>Members of the <i>Rocky Linux</i> community are invited to participate in " \
++    "<a href=\"http://open-scap.org\">OpenSCAP</a> and " \
++    "<a href=\"https://github.com/ComplianceAsCode/content\">" \
++    "SCAP Security Guide</a> development. Bug reports and patches " \
++    "can be sent to GitHub: " \
++    "<a href=\"https://github.com/ComplianceAsCode/content\">" \
++    "https://github.com/ComplianceAsCode/content</a>. " \
++    "The mailing list is at " \
++    "<a href=\"https://fedorahosted.org/mailman/listinfo/scap-security-guide\">" \
++    "https://fedorahosted.org/mailman/listinfo/scap-security-guide</a>" \
++    ".</p>" \
++    "</div>"
++
+ SL_NOTICE = \
+     "<div xmlns=\"http://www.w3.org/1999/xhtml\">\n" \
+     "<p>This benchmark is a direct port of a <i>SCAP Security Guide </i> " \
+-- 
+2.39.1
+

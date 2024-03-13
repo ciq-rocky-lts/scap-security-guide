@@ -1,0 +1,122 @@
+From a8236abf709c577152cb96876fcc27c8cf173e66 Mon Sep 17 00:00:00 2001
+From: Watson Sato <wsato@redhat.com>
+Date: Wed, 8 Feb 2023 14:42:32 +0100
+Subject: [PATCH 5/5] Accept required and requisite control flag for
+ pam_pwhistory
+
+Patch-name: scap-security-guide-0.1.67-pwhistory_control-PR_10175.patch
+Patch-status: Accept required and requisite control flag for pam_pwhistory
+---
+ controls/cis_rhel8.yml                                        | 2 +-
+ controls/cis_rhel9.yml                                        | 2 +-
+ controls/srg_gpos/SRG-OS-000077-GPOS-00045.yml                | 2 +-
+ .../rule.yml                                                  | 4 ++++
+ .../var_password_pam_remember_control_flag.var                | 1 +
+ products/rhel8/profiles/stig.profile                          | 2 +-
+ tests/data/profile_stability/rhel8/stig.profile               | 2 +-
+ tests/data/profile_stability/rhel8/stig_gui.profile           | 2 +-
+ 8 files changed, 11 insertions(+), 6 deletions(-)
+
+diff --git a/controls/cis_rhel8.yml b/controls/cis_rhel8.yml
+index c0406f97b8..efc53d03fd 100644
+--- a/controls/cis_rhel8.yml
++++ b/controls/cis_rhel8.yml
+@@ -2267,7 +2267,7 @@ controls:
+     rules:
+       - accounts_password_pam_pwhistory_remember_password_auth
+       - accounts_password_pam_pwhistory_remember_system_auth
+-      - var_password_pam_remember_control_flag=requisite
++      - var_password_pam_remember_control_flag=requisite_or_required
+       - var_password_pam_remember=5
+ 
+   - id: 5.5.4
+diff --git a/controls/cis_rhel9.yml b/controls/cis_rhel9.yml
+index 7299a39528..30f7e8d182 100644
+--- a/controls/cis_rhel9.yml
++++ b/controls/cis_rhel9.yml
+@@ -2112,7 +2112,7 @@ controls:
+     rules:
+       - accounts_password_pam_pwhistory_remember_password_auth
+       - accounts_password_pam_pwhistory_remember_system_auth
+-      - var_password_pam_remember_control_flag=requisite
++      - var_password_pam_remember_control_flag=requisite_or_required
+       - var_password_pam_remember=5
+ 
+   - id: 5.5.4
+diff --git a/controls/srg_gpos/SRG-OS-000077-GPOS-00045.yml b/controls/srg_gpos/SRG-OS-000077-GPOS-00045.yml
+index 1e8286a4a4..b02b7da419 100644
+--- a/controls/srg_gpos/SRG-OS-000077-GPOS-00045.yml
++++ b/controls/srg_gpos/SRG-OS-000077-GPOS-00045.yml
+@@ -5,7 +5,7 @@ controls:
+         title: {{{ full_name }}} must prohibit password reuse for a minimum of five generations.
+         rules:
+             - var_password_pam_remember=5
+-            - var_password_pam_remember_control_flag=requisite
++            - var_password_pam_remember_control_flag=requisite_or_required
+             - accounts_password_pam_pwhistory_remember_password_auth
+             - accounts_password_pam_pwhistory_remember_system_auth
+         status: automated
+diff --git a/linux_os/guide/system/accounts/accounts-pam/locking_out_password_attempts/accounts_password_pam_pwhistory_remember_password_auth/rule.yml b/linux_os/guide/system/accounts/accounts-pam/locking_out_password_attempts/accounts_password_pam_pwhistory_remember_password_auth/rule.yml
+index c549de2e96..d2b220ef9f 100644
+--- a/linux_os/guide/system/accounts/accounts-pam/locking_out_password_attempts/accounts_password_pam_pwhistory_remember_password_auth/rule.yml
++++ b/linux_os/guide/system/accounts/accounts-pam/locking_out_password_attempts/accounts_password_pam_pwhistory_remember_password_auth/rule.yml
+@@ -129,3 +129,7 @@ warnings:
+        Newer versions of <tt>authselect</tt> contain an authselect feature to easily and properly
+        enable <tt>pam_pwhistory.so</tt> module. If this feature is not yet available in your
+        system, an authselect custom profile must be used to avoid integrity issues in PAM files.
++       If a custom profile was created and used in the system before this authselect feature was
++       available, the new feature can't be used with this custom profile and the
++       remediation will fail. In this case, the custom profile should be recreated or manually
++       updated.
+diff --git a/linux_os/guide/system/accounts/accounts-pam/locking_out_password_attempts/var_password_pam_remember_control_flag.var b/linux_os/guide/system/accounts/accounts-pam/locking_out_password_attempts/var_password_pam_remember_control_flag.var
+index 8f01007550..1959936c04 100644
+--- a/linux_os/guide/system/accounts/accounts-pam/locking_out_password_attempts/var_password_pam_remember_control_flag.var
++++ b/linux_os/guide/system/accounts/accounts-pam/locking_out_password_attempts/var_password_pam_remember_control_flag.var
+@@ -20,4 +20,5 @@ options:
+     "sufficient": "sufficient"
+     "binding": "binding"
+     "ol8": "required,requisite"
++    "requisite_or_required": "requisite,required"
+     default: "requisite"
+diff --git a/products/rhel8/profiles/stig.profile b/products/rhel8/profiles/stig.profile
+index 8c64868619..a3f7dc9720 100644
+--- a/products/rhel8/profiles/stig.profile
++++ b/products/rhel8/profiles/stig.profile
+@@ -37,7 +37,7 @@ selections:
+     - var_accounts_minimum_age_login_defs=1
+     - var_accounts_max_concurrent_login_sessions=10
+     - var_password_pam_remember=5
+-    - var_password_pam_remember_control_flag=requisite
++    - var_password_pam_remember_control_flag=requisite_or_required
+     - var_selinux_state=enforcing
+     - var_selinux_policy_name=targeted
+     - var_password_pam_unix_rounds=5000
+diff --git a/tests/data/profile_stability/rhel8/stig.profile b/tests/data/profile_stability/rhel8/stig.profile
+index 6970a32b4f..5d694c6ae1 100644
+--- a/tests/data/profile_stability/rhel8/stig.profile
++++ b/tests/data/profile_stability/rhel8/stig.profile
+@@ -433,7 +433,7 @@ selections:
+ - var_accounts_minimum_age_login_defs=1
+ - var_accounts_max_concurrent_login_sessions=10
+ - var_password_pam_remember=5
+-- var_password_pam_remember_control_flag=requisite
++- var_password_pam_remember_control_flag=requisite_or_required
+ - var_selinux_state=enforcing
+ - var_selinux_policy_name=targeted
+ - var_password_pam_unix_rounds=5000
+diff --git a/tests/data/profile_stability/rhel8/stig_gui.profile b/tests/data/profile_stability/rhel8/stig_gui.profile
+index 314f14e4f6..e165525b90 100644
+--- a/tests/data/profile_stability/rhel8/stig_gui.profile
++++ b/tests/data/profile_stability/rhel8/stig_gui.profile
+@@ -441,7 +441,7 @@ selections:
+ - var_accounts_minimum_age_login_defs=1
+ - var_accounts_max_concurrent_login_sessions=10
+ - var_password_pam_remember=5
+-- var_password_pam_remember_control_flag=requisite
++- var_password_pam_remember_control_flag=requisite_or_required
+ - var_selinux_state=enforcing
+ - var_selinux_policy_name=targeted
+ - var_password_pam_unix_rounds=5000
+-- 
+2.39.1
+

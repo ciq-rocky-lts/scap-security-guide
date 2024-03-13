@@ -1,0 +1,61 @@
+From 746381a4070fc561651ad65ec0fe9610e8590781 Mon Sep 17 00:00:00 2001
+From: Watson Sato <wsato@redhat.com>
+Date: Mon, 6 Feb 2023 14:44:17 +0100
+Subject: [PATCH] Disable profiles not in good shape
+
+Patch-name: disable-not-in-good-shape-profiles.patch
+Patch-id: 0
+Patch-status: |
+    Patch prevents cjis, rht-ccp and standard profiles in RHEL8 datastream
+---
+ products/rhel8/CMakeLists.txt            | 1 -
+ products/rhel8/profiles/cjis.profile     | 2 +-
+ products/rhel8/profiles/rht-ccp.profile  | 2 +-
+ products/rhel8/profiles/standard.profile | 2 +-
+ 4 files changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/products/rhel8/CMakeLists.txt b/products/rhel8/CMakeLists.txt
+index 9c044b68ab..8f6ca03de8 100644
+--- a/products/rhel8/CMakeLists.txt
++++ b/products/rhel8/CMakeLists.txt
+@@ -10,7 +10,6 @@ ssg_build_product(${PRODUCT})
+ ssg_build_html_ref_tables("${PRODUCT}" "table-${PRODUCT}-{ref_id}refs" "anssi;cis;cui;nist;pcidss")
+ 
+ ssg_build_html_profile_table("table-${PRODUCT}-nistrefs-ospp" "${PRODUCT}" "ospp" "nist")
+-ssg_build_html_profile_table("table-${PRODUCT}-nistrefs-standard" "${PRODUCT}" "standard" "nist")
+ ssg_build_html_profile_table("table-${PRODUCT}-nistrefs-stig" "${PRODUCT}" "stig" "nist")
+ 
+ ssg_build_html_profile_table("table-${PRODUCT}-anssirefs-bp28_minimal" "${PRODUCT}" "anssi_bp28_minimal" "anssi")
+diff --git a/products/rhel8/profiles/cjis.profile b/products/rhel8/profiles/cjis.profile
+index 22ae5aac72..f60b65bc06 100644
+--- a/products/rhel8/profiles/cjis.profile
++++ b/products/rhel8/profiles/cjis.profile
+@@ -1,4 +1,4 @@
+-documentation_complete: true
++documentation_complete: false
+ 
+ metadata:
+     version: 5.4
+diff --git a/products/rhel8/profiles/rht-ccp.profile b/products/rhel8/profiles/rht-ccp.profile
+index b192461f95..ae1e7d5a15 100644
+--- a/products/rhel8/profiles/rht-ccp.profile
++++ b/products/rhel8/profiles/rht-ccp.profile
+@@ -1,4 +1,4 @@
+-documentation_complete: true
++documentation_complete: false
+ 
+ title: 'Red Hat Corporate Profile for Certified Cloud Providers (RH CCP)'
+ 
+diff --git a/products/rhel8/profiles/standard.profile b/products/rhel8/profiles/standard.profile
+index a63ae2cf32..da669bb843 100644
+--- a/products/rhel8/profiles/standard.profile
++++ b/products/rhel8/profiles/standard.profile
+@@ -1,4 +1,4 @@
+-documentation_complete: true
++documentation_complete: false
+ 
+ title: 'Standard System Security Profile for Red Hat Enterprise Linux 8'
+ 
+-- 
+2.39.1
+

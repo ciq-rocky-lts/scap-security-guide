@@ -1,0 +1,1950 @@
+From be0ffb00c4911eb6b6478525e27e494809ce44ea Mon Sep 17 00:00:00 2001
+From: Watson Sato <wsato@redhat.com>
+Date: Tue, 7 Feb 2023 10:53:17 +0100
+Subject: [PATCH 2/5] Rsyslog files rules remediations
+
+Patch-name: scap-security-guide-0.1.67-rsyslog_files_rules_remediations-PR_9789.patch
+Patch-status: Rsyslog files rules remediations
+---
+ controls/cis_sle12.yml                        |   4 +-
+ controls/cis_sle15.yml                        |   4 +-
+ .../file_groupowner_logfiles_value.var        |  18 ---
+ .../oval/shared.xml                           | 116 ---------------
+ .../rsyslog_files_groupownership/rule.yml     |  39 ++++-
+ .../tests/IncludeConfig_is_other.fail.sh      |  42 ------
+ .../tests/IncludeConfig_is_root.pass.sh       |  39 -----
+ .../tests/include_is_other.fail.sh            |  42 ------
+ .../tests/include_is_root.pass.sh             |  39 -----
+ .../tests/include_multiline_is_root.pass.sh   |  41 ------
+ .../tests/is_other.fail.sh                    |  25 ----
+ .../tests/is_root.pass.sh                     |  24 ---
+ .../rsyslog_files_ownership/oval/shared.xml   | 114 ---------------
+ .../rsyslog_files_ownership/rule.yml          |  44 +++++-
+ .../ansible/shared.yml                        |  12 ++
+ .../rsyslog_logging_configured/bash/shared.sh |   7 +
+ .../oval/shared.xml                           |  41 ++++++
+ .../rsyslog_logging_configured/rule.yml       |  34 +++++
+ ...with_everything_logged_to_messages.pass.sh |  13 ++
+ .../rsyslog_file_with_no_logging.fail.sh      |  12 ++
+ .../profiles/anssi_np_nt28_average.profile    |   2 -
+ products/debian10/profiles/standard.profile   |   2 -
+ .../profiles/anssi_np_nt28_average.profile    |   2 -
+ products/debian11/profiles/standard.profile   |   2 -
+ products/rhel7/profiles/rht-ccp.profile       |   2 -
+ products/rhel8/profiles/rht-ccp.profile       |   2 -
+ .../profiles/anssi_bp28_intermediary.profile  |   1 +
+ products/sle15/profiles/standard.profile      |   2 -
+ .../profiles/anssi_np_nt28_average.profile    |   2 -
+ products/ubuntu1604/profiles/standard.profile |   2 -
+ .../profiles/anssi_np_nt28_average.profile    |   2 -
+ products/ubuntu1804/profiles/standard.profile |   2 -
+ products/ubuntu2004/profiles/standard.profile |   2 -
+ products/ubuntu2204/profiles/standard.profile |   2 -
+ shared/references/cce-sle12-avail.txt         |   1 -
+ shared/references/cce-sle15-avail.txt         |   1 -
+ .../ansible.template                          |  68 +++++++++
+ .../bash.template                             | 110 ++++++++++++++
+ .../oval.template                             | 137 ++++++++++++++++++
+ .../template.yml                              |   4 +
+ .../tests/IncludeConfig_is_other.fail.sh      |  14 +-
+ .../tests/IncludeConfig_is_root.pass.sh       |  10 +-
+ .../tests/include_is_other.fail.sh            |  14 +-
+ ...udeConfig_is_other_RainerLogClause.fail.sh |  37 ++++-
+ .../tests/include_is_root.pass.sh             |  11 +-
+ ...ude_is_root_IncludeConfig_is_other.fail.sh |  16 +-
+ ...lude_is_root_IncludeConfig_is_root.pass.sh |  12 +-
+ ...ludeConfig_is_root_RainerLogClause.pass.sh |  22 +--
+ .../tests/include_multiline_is_root.pass.sh   |  10 +-
+ .../tests/is_other.fail.sh                    |  12 +-
+ .../tests/is_root.pass.sh                     |   8 +-
+ 51 files changed, 648 insertions(+), 576 deletions(-)
+ delete mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/file_groupowner_logfiles_value.var
+ delete mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/oval/shared.xml
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/IncludeConfig_is_other.fail.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/IncludeConfig_is_root.pass.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_other.fail.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_root.pass.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_multiline_is_root.pass.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/is_other.fail.sh
+ delete mode 100755 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/is_root.pass.sh
+ delete mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/oval/shared.xml
+ create mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/ansible/shared.yml
+ create mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/bash/shared.sh
+ create mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/oval/shared.xml
+ create mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/rule.yml
+ create mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/tests/rsyslog_file_with_everything_logged_to_messages.pass.sh
+ create mode 100644 linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/tests/rsyslog_file_with_no_logging.fail.sh
+ create mode 100644 shared/templates/rsyslog_logfiles_attributes_modify/ansible.template
+ create mode 100644 shared/templates/rsyslog_logfiles_attributes_modify/bash.template
+ create mode 100644 shared/templates/rsyslog_logfiles_attributes_modify/oval.template
+ create mode 100644 shared/templates/rsyslog_logfiles_attributes_modify/template.yml
+ rename {linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership => shared/templates/rsyslog_logfiles_attributes_modify}/tests/IncludeConfig_is_other.fail.sh (75%)
+ rename {linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership => shared/templates/rsyslog_logfiles_attributes_modify}/tests/IncludeConfig_is_root.pass.sh (81%)
+ rename {linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership => shared/templates/rsyslog_logfiles_attributes_modify}/tests/include_is_other.fail.sh (75%)
+ rename linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_root_IncludeConfig_is_root.pass.sh => shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_other_IncludeConfig_is_other_RainerLogClause.fail.sh (50%)
+ mode change 100755 => 100644
+ rename {linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership => shared/templates/rsyslog_logfiles_attributes_modify}/tests/include_is_root.pass.sh (81%)
+ rename {linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership => shared/templates/rsyslog_logfiles_attributes_modify}/tests/include_is_root_IncludeConfig_is_other.fail.sh (77%)
+ rename {linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership => shared/templates/rsyslog_logfiles_attributes_modify}/tests/include_is_root_IncludeConfig_is_root.pass.sh (82%)
+ rename linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_root_IncludeConfig_is_other.fail.sh => shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_root_RainerLogClause.pass.sh (65%)
+ rename {linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership => shared/templates/rsyslog_logfiles_attributes_modify}/tests/include_multiline_is_root.pass.sh (81%)
+ rename {linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership => shared/templates/rsyslog_logfiles_attributes_modify}/tests/is_other.fail.sh (70%)
+ rename {linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership => shared/templates/rsyslog_logfiles_attributes_modify}/tests/is_root.pass.sh (77%)
+
+diff --git a/controls/cis_sle12.yml b/controls/cis_sle12.yml
+index 5c464fe556..8576343b9d 100644
+--- a/controls/cis_sle12.yml
++++ b/controls/cis_sle12.yml
+@@ -1321,7 +1321,9 @@ controls:
+     levels:
+     - l1_server
+     - l1_workstation
+-    status: manual 
++    automated: yes
++    rules:
++      - rsyslog_logging_configured
+ 
+   - id: 4.2.1.5
+     title: Ensure rsyslog is configured to send logs to a remote log host (Automated)
+diff --git a/controls/cis_sle15.yml b/controls/cis_sle15.yml
+index 36d7616f90..f82341a038 100644
+--- a/controls/cis_sle15.yml
++++ b/controls/cis_sle15.yml
+@@ -1469,7 +1469,9 @@ controls:
+     levels:
+       - l1_server
+       - l1_workstation
+-    status: manual 
++    automated: yes
++    rules:
++      - rsyslog_logging_configured
+ 
+   - id: 4.2.1.5
+     title: Ensure rsyslog is configured to send logs to a remote log host (Automated)
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/file_groupowner_logfiles_value.var b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/file_groupowner_logfiles_value.var
+deleted file mode 100644
+index 7ebf8c191a..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/file_groupowner_logfiles_value.var
++++ /dev/null
+@@ -1,18 +0,0 @@
+-documentation_complete: true
+-
+-title: 'group who owns log files'
+-
+-description: |-
+-    Specify group owner of all logfiles specified in
+-    <tt>/etc/rsyslog.conf.</tt>
+-
+-type: string
+-
+-operator: equals
+-
+-interactive: false
+-
+-options:
+-    default: root
+-    adm: adm
+-    root: root
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/oval/shared.xml b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/oval/shared.xml
+deleted file mode 100644
+index 4567f4d411..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/oval/shared.xml
++++ /dev/null
+@@ -1,116 +0,0 @@
+-<def-group oval_version="5.11">
+-  <definition class="compliance" id="rsyslog_files_groupownership" version="1">
+-    {{{ oval_metadata("All syslog log files should be owned by the appropriate group.") }}}
+-
+-    <criteria operator="AND">
+-      {{% if product in ["debian10", "debian11", "ubuntu1604"] %}}
+-      <extend_definition comment="rsyslog daemon is used as local logging daemon" definition_ref="package_rsyslog_installed" />
+-      {{% endif %}}
+-      <criterion comment="Check if all system log files are owned by the appropriate group" test_ref="test_rsyslog_files_groupownership" />
+-    </criteria>
+-
+-  </definition>
+-
+-  <!-- First obtain rsyslog's $IncludeConfig directive and include() object (introduced in rsyslog v8.33.0) values.  -->
+-  <ind:textfilecontent54_object id="object_rfg_rsyslog_include_config_value" comment="rsyslog's $IncludeConfig directive and include() object values" version="1">
+-    <ind:filepath>/etc/rsyslog.conf</ind:filepath>
+-    <ind:pattern operation="pattern match">^(?:include\([\n\s]*file="([^\s;]+)".*|\$IncludeConfig[\s]+([^\s;]+))$</ind:pattern>
+-    <ind:instance datatype="int" operation="greater than or equal">1</ind:instance>
+-  </ind:textfilecontent54_object>
+-
+-  <!-- Turn that glob value into Perl's regex so it can be used as filepath pattern below -->
+-  <local_variable id="var_rfg_include_config_regex" datatype="string" version="1" comment="$IncludeConfig value converted to regex">
+-    <unique>
+-      <glob_to_regex>
+-        <object_component item_field="subexpression" object_ref="object_rfg_rsyslog_include_config_value" />
+-      </glob_to_regex>
+-    </unique>
+-  </local_variable>
+-
+-  <!-- Create a variable_object from the regex variable
+-       If the variable has no values, there won't be any objects -->
+-  <ind:variable_object id="object_var_rfg_include_config_regex" comment="Make variable object from regex variable" version="1">
+-    <ind:var_ref>var_rfg_include_config_regex</ind:var_ref>
+-  </ind:variable_object>
+-
+-  <local_variable id="var_rfg_syslog_config" datatype="string" version="1" comment="Locations of all rsyslog configuration files as collection">
+-    <literal_component datatype="string">^/etc/rsyslog.conf$</literal_component>
+-  </local_variable>
+-
+-  <ind:variable_object id="object_var_rfg_syslog_config" comment="Make variable object for use" version="1">
+-    <ind:var_ref>var_rfg_syslog_config</ind:var_ref>
+-  </ind:variable_object>
+-
+-  <!-- Combine the two variable_objects into one variable_object
+-       We do it this way to avoid referencing an empty variable in a state comparison, which
+-       will cause a test to evaluate to fail. Combining an empty set of objects is fine though -->
+-  <ind:variable_object id="object_var_rfg_all_log_files" comment="Filter out empty string" version="1">
+-    <set>
+-      <object_reference>object_var_rfg_include_config_regex</object_reference>
+-      <object_reference>object_var_rfg_syslog_config</object_reference>
+-    </set>
+-  </ind:variable_object>
+-
+-  <!-- In element filepath of object_rfg_log_files_paths we need to pass a list of values,
+-       a list of objects won't do. So we make a local_variable from the variable_objects. -->
+-  <local_variable id="var_rfg_all_log_files" datatype="string" version="1" comment="Locations of all rsyslog configuration files as collection">
+-    <object_component object_ref="object_var_rfg_all_log_files" item_field="value"/>
+-  </local_variable>
+-
+-  <!-- For each item from that collection (particular rsyslog's configuration file path) search
+-       that rsyslog's configuration file to select file paths for log files directives
+-  -->
+-  <ind:textfilecontent54_object id="object_rfg_log_files_paths" comment="All rsyslog configuration files" version="1">
+-    <ind:filepath operation="pattern match" var_ref="var_rfg_all_log_files" var_check="at least one" />
+-    <!-- Chunk of text retrieved from rsyslog's configuration file is considered
+-         to constitute a log file path if all of the following conditions are met:
+-         * the string represents a regular file on particular file system
+-           (verified via corresponding file_state below),
+-         * the chunk of text is in the last column in the row,
+-           (possibly suffixed by ';' character and rsyslog Template name),
+-         * contains at least one slash '/' character, and simultaneously
+-           doesn't contain any of ';', ':' and space characters,
+-         * the chunk was retrieved from a row not starting with space, '#',
+-           or '$' characters
+-    -->
+-    <ind:pattern operation="pattern match">^[^(\s|#|\$)]+[\s]+.*[\s]+-?(/+[^:;\s]+);*\.*$</ind:pattern>
+-    <ind:instance datatype="int" operation="greater than or equal">1</ind:instance>
+-    <filter action="exclude">state_groupownership_ignore_include_paths</filter>
+-  </ind:textfilecontent54_object>
+-
+-  <ind:textfilecontent54_state id="state_groupownership_ignore_include_paths" comment="ignore" version="1">
+-    <!-- Among the paths matched in object_rfp_log_files_paths there can be paths from
+-         include() or $IncludeConfig statements.
+-         These paths are conf files, not log files. Their groupownership don't need to be as
+-         required for log files, thus, lets exclude them from the list of objects found
+-    -->
+-	  <ind:text operation="pattern match">(?:file="[^\s;]+"|\$IncludeConfig[\s]+[^\s;]+|\/dev\/.*)</ind:text>
+-  </ind:textfilecontent54_state>
+-
+-  <!-- Define OVAL variable to hold all the various system log files locations
+-       retrieved from the different rsyslog configuration files
+-  -->
+-  <local_variable id="var_rfg_log_files_paths" datatype="string" version="1" comment="File paths of all rsyslog configuration files">
+-    <object_component item_field="subexpression" object_ref="object_rfg_log_files_paths" />
+-  </local_variable>
+-
+-  <!-- Perform the test if all rsyslog system log files are owned by the appropriate group -->
+-  <unix:file_test check="all" check_existence="all_exist" id="test_rsyslog_files_groupownership" version="1" comment="System log files are owned by the appropriate group">
+-    <unix:object object_ref="object_rsyslog_files_groupownership" />
+-    <unix:state state_ref="state_rsyslog_files_groupownership" />
+-  </unix:file_test>
+-
+-  <unix:file_object id="object_rsyslog_files_groupownership" comment="Various system log files" version="1">
+-    <unix:filepath datatype="string" var_ref="var_rfg_log_files_paths" var_check="at least one" />
+-  </unix:file_object>
+-
+-  <unix:file_state id="state_rsyslog_files_groupownership" version="1">
+-    <unix:type operation="equals">regular</unix:type>
+-    {{% if product in ["debian10", "debian11", "ubuntu1604", "ubuntu2004", "ubuntu2204"] %}}
+-    <unix:group_id datatype="int">4</unix:group_id>
+-    {{% else %}}
+-    <unix:group_id datatype="int">0</unix:group_id>
+-    {{% endif %}}
+-  </unix:file_state>
+-
+-</def-group>
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/rule.yml b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/rule.yml
+index 4f797f4a21..13c89d90c5 100644
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/rule.yml
++++ b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/rule.yml
+@@ -4,15 +4,30 @@ title: 'Ensure Log Files Are Owned By Appropriate Group'
+ 
+ description: |-
+     The group-owner of all log files written by
+-    <tt>rsyslog</tt> should be <tt>{{{ xccdf_value("file_groupowner_logfiles_value") }}}</tt>.
++    <tt>rsyslog</tt> should be
++{{% if 'debian' in product or 'ubuntu' in product %}}
++    <tt>adm</tt>.
++{{% else %}}
++    <tt>root</tt>.
++{{% endif %}}
+     These log files are determined by the second part of each Rule line in
+     <tt>/etc/rsyslog.conf</tt> and typically all appear in <tt>/var/log</tt>.
+     For each log file <i>LOGFILE</i> referenced in <tt>/etc/rsyslog.conf</tt>,
+     run the following command to inspect the file's group owner:
+     <pre>$ ls -l <i>LOGFILE</i></pre>
+-    If the owner is not <tt>{{{ xccdf_value("file_groupowner_logfiles_value") }}}</tt>, run the following command to
++    If the owner is not
++    {{% if 'debian' in product or 'ubuntu' in product %}}
++    <tt>adm</tt>,
++    {{% else %}}
++    <tt>root</tt>,
++    {{% endif %}}
++    run the following command to
+     correct this:
+-    <pre>$ sudo chgrp {{{ xccdf_value("file_groupowner_logfiles_value") }}} <i>LOGFILE</i></pre>
++{{% if 'debian' in product or 'ubuntu' in product %}}
++    <pre>$ sudo chgrp adm <i>LOGFILE</i></pre>
++{{% else %}}
++    <pre>$ sudo chgrp root <i>LOGFILE</i></pre>
++{{% endif %}}
+ 
+ rationale: |-
+     The log files generated by rsyslog contain valuable information regarding system
+@@ -47,8 +62,24 @@ references:
+ ocil_clause: 'the group-owner is not correct'
+ 
+ ocil: |-
+-    The group-owner of all log files written by <tt>rsyslog</tt> should be <tt>{{{ xccdf_value("file_groupowner_logfiles_value") }}}</tt>.
++    The group-owner of all log files written by <tt>rsyslog</tt> should be
++    {{% if 'debian' in product or 'ubuntu' in product %}}
++    <tt>adm</tt>.
++    {{% else %}}
++    <tt>root</tt>.
++    {{% endif %}}
+     These log files are determined by the second part of each Rule line in
+     <tt>/etc/rsyslog.conf</tt> and typically all appear in <tt>/var/log</tt>.
+     To see the group-owner of a given log file, run the following command:
+     <pre>$ ls -l <i>LOGFILE</i></pre>
++
++template:
++  name: rsyslog_logfiles_attributes_modify
++  vars:
++    attribute: groupowner
++    value: 0
++    value@debian10: 4
++    value@debian11: 4
++    value@ubuntu1604: 4
++    value@ubuntu2004: 4
++    value@ubuntu2204: 4
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/IncludeConfig_is_other.fail.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/IncludeConfig_is_other.fail.sh
+deleted file mode 100755
+index 575530ef2e..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/IncludeConfig_is_other.fail.sh
++++ /dev/null
+@@ -1,42 +0,0 @@
+-#!/bin/bash
+-# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
+-
+-# Check rsyslog.conf with root group-owner log from rules and
+-# non root group-owner log from $IncludeConfig fails.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-GROUP_TEST=testssg
+-groupadd $GROUP_TEST
+-
+-GROUP_ROOT=root
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files ownership
+-chgrp $GROUP_ROOT ${RSYSLOG_TEST_LOGS[0]}
+-chgrp $GROUP_TEST ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*      ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-\$IncludeConfig ${test_conf}
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/IncludeConfig_is_root.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/IncludeConfig_is_root.pass.sh
+deleted file mode 100755
+index 39efc1a4b7..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/IncludeConfig_is_root.pass.sh
++++ /dev/null
+@@ -1,39 +0,0 @@
+-#!/bin/bash
+-# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
+-
+-# Check rsyslog.conf with root group-owner log from rules and
+-# root group-owner log from $IncludeConfig passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-GROUP=root
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files ownership
+-chgrp $GROUP ${RSYSLOG_TEST_LOGS[0]}
+-chgrp $GROUP ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-\$IncludeConfig ${test_conf}
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_other.fail.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_other.fail.sh
+deleted file mode 100755
+index c0db7056b4..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_other.fail.sh
++++ /dev/null
+@@ -1,42 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+-
+-# Check rsyslog.conf with root group-owner log from rules and
+-# non root group-owner log from include() fails.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-GROUP_TEST=testssg
+-groupadd $GROUP_TEST
+-
+-GROUP_ROOT=root
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files ownership
+-chgrp $GROUP_ROOT ${RSYSLOG_TEST_LOGS[0]}
+-chgrp $GROUP_TEST ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*      ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${test_conf}")
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_root.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_root.pass.sh
+deleted file mode 100755
+index 1feaf762fc..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_root.pass.sh
++++ /dev/null
+@@ -1,39 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+-
+-# Check rsyslog.conf with root group-owner log from rules and
+-# root group-owner log from include() passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-GROUP=root
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files ownership
+-chgrp $GROUP ${RSYSLOG_TEST_LOGS[0]}
+-chgrp $GROUP ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(file="${test_conf}")
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_multiline_is_root.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_multiline_is_root.pass.sh
+deleted file mode 100755
+index 5a357d029b..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_multiline_is_root.pass.sh
++++ /dev/null
+@@ -1,41 +0,0 @@
+-#!/bin/bash
+-# platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+-
+-# Check rsyslog.conf with root group-owner log from rules and
+-# root group-owner log from multiline include() passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-GROUP=root
+-
+-# setup test data
+-create_rsyslog_test_logs 2
+-
+-# setup test log files ownership
+-chgrp $GROUP ${RSYSLOG_TEST_LOGS[0]}
+-chgrp $GROUP ${RSYSLOG_TEST_LOGS[1]}
+-
+-# create test configuration file
+-test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+-cat << EOF > ${test_conf}
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[1]}
+-EOF
+-
+-# create rsyslog.conf configuration file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-
+-#### MODULES ####
+-
+-include(
+-   file="${test_conf}"
+-)
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/is_other.fail.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/is_other.fail.sh
+deleted file mode 100755
+index c7c01132f2..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/is_other.fail.sh
++++ /dev/null
+@@ -1,25 +0,0 @@
+-#!/bin/bash
+-# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
+-
+-# Check if log file with non root group-owner in rsyslog.conf fails.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-GROUP=testssg
+-
+-groupadd $GROUP
+-
+-# setup test data
+-create_rsyslog_test_logs 1
+-
+-# setup test log file ownership
+-chgrp $GROUP ${RSYSLOG_TEST_LOGS[0]}
+-
+-# add rule with non-root group owned log file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*     ${RSYSLOG_TEST_LOGS[0]}
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/is_root.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/is_root.pass.sh
+deleted file mode 100755
+index 0ecbb35bd1..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/is_root.pass.sh
++++ /dev/null
+@@ -1,24 +0,0 @@
+-#!/bin/bash
+-# platform = multi_platform_rhel,multi_platform_fedora,multi_platform_ol,multi_platform_sle
+-
+-# Check if log file with root group-owner in rsyslog.conf passes.
+-
+-source $SHARED/rsyslog_log_utils.sh
+-
+-GROUP=root
+-
+-# setup test data
+-create_rsyslog_test_logs 1
+-
+-# setup test log file ownership
+-chgrp $GROUP ${RSYSLOG_TEST_LOGS[0]}
+-
+-# add rule with root group owned log file
+-cat << EOF > $RSYSLOG_CONF
+-# rsyslog configuration file
+-
+-#### RULES ####
+-
+-*.*        ${RSYSLOG_TEST_LOGS[0]}
+-
+-EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/oval/shared.xml b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/oval/shared.xml
+deleted file mode 100644
+index 8e3f68db26..0000000000
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/oval/shared.xml
++++ /dev/null
+@@ -1,114 +0,0 @@
+-<def-group oval_version="5.11">
+-  <definition class="compliance" id="rsyslog_files_ownership" version="1">
+-    {{{ oval_metadata("All syslog log files should be owned by the appropriate user.") }}}
+-
+-    <criteria>
+-      <criterion comment="Check if all system log files are owned by appropriate user" test_ref="test_rsyslog_files_ownership" />
+-    </criteria>
+-
+-  </definition>
+-
+-  <!-- First obtain rsyslog's $IncludeConfig directive and include() object (introduced in rsyslog v8.33.0) values.  -->
+-  <ind:textfilecontent54_object id="object_rfo_rsyslog_include_config_value" comment="rsyslog's $IncludeConfig directive and include() object values" version="1">
+-    <ind:filepath>/etc/rsyslog.conf</ind:filepath>
+-    <ind:pattern operation="pattern match">^(?:include\([\n\s]*file="([^\s;]+)".*|\$IncludeConfig[\s]+([^\s;]+))$</ind:pattern>
+-    <ind:instance datatype="int" operation="greater than or equal">1</ind:instance>
+-  </ind:textfilecontent54_object>
+-
+-  <!-- Turn that glob value into Perl's regex so it can be used as filepath pattern below -->
+-  <local_variable id="var_rfo_include_config_regex" datatype="string" version="1" comment="$IncludeConfig value converted to regex">
+-    <unique>
+-      <glob_to_regex>
+-        <object_component item_field="subexpression" object_ref="object_rfo_rsyslog_include_config_value" />
+-      </glob_to_regex>
+-    </unique>
+-  </local_variable>
+-
+-  <!-- Create a variable_object from the regex variable
+-       If the variable has no values, there won't be any objects -->
+-  <ind:variable_object id="object_var_rfo_include_config_regex" comment="Make variable object from regex variable" version="1">
+-    <ind:var_ref>var_rfo_include_config_regex</ind:var_ref>
+-  </ind:variable_object>
+-
+-  <local_variable id="var_rfo_syslog_config" datatype="string" version="1" comment="Locations of all rsyslog configuration files as collection">
+-    <literal_component datatype="string">^/etc/rsyslog.conf$</literal_component>
+-  </local_variable>
+-
+-  <ind:variable_object id="object_var_rfo_syslog_config" comment="Make variable object for use" version="1">
+-    <ind:var_ref>var_rfo_syslog_config</ind:var_ref>
+-  </ind:variable_object>
+-
+-  <!-- Combine the two variable_objects into one variable_object
+-       We do it this way to avoid referencing an empty variable in a state comparison, which
+-       will cause a test to evaluate to fail. Combining an empty set of objects is fine though -->
+-  <ind:variable_object id="object_var_rfo_all_log_files" comment="Filter out empty string" version="1">
+-    <set>
+-      <object_reference>object_var_rfo_include_config_regex</object_reference>
+-      <object_reference>object_var_rfo_syslog_config</object_reference>
+-    </set>
+-  </ind:variable_object>
+-
+-  <!-- In element filepath of object_rfg_log_files_paths we need to pass a list of values,
+-       a list of objects won't do. So we make a local_variable from the variable_objects. -->
+-  <local_variable id="var_rfo_all_log_files" datatype="string" version="1" comment="Locations of all rsyslog configuration files as collection">
+-    <object_component object_ref="object_var_rfo_all_log_files" item_field="value"/>
+-  </local_variable>
+-
+-  <!-- For each item from that collection (particular rsyslog's configuration file path) search
+-       that rsyslog's configuration file to select file paths for log files directives
+-  -->
+-  <ind:textfilecontent54_object id="object_rfo_log_files_paths" comment="All rsyslog configuration files" version="1">
+-    <ind:filepath operation="pattern match" var_ref="var_rfo_all_log_files" var_check="at least one" />
+-    <!-- Chunk of text retrieved from rsyslog's configuration file is considered
+-         to constitute a log file path if all of the following conditions are met:
+-         * the string represents a regular file on particular file system
+-           (verified via corresponding file_state below),
+-         * the chunk of text is in the last column in the row,
+-           (possibly suffixed by ';' character and rsyslog Template name),
+-         * contains at least one slash '/' character, and simultaneously
+-           doesn't contain any of ';', ':' and space characters,
+-         * the chunk was retrieved from a row not starting with space, '#',
+-           or '$' characters
+-    -->
+-    <ind:pattern operation="pattern match">^[^(#|\$)]+[\s]+.*[\s]+-?(/+[^:;\s]+);*\.*$</ind:pattern>
+-    <ind:instance datatype="int" operation="greater than or equal">1</ind:instance>
+-    <filter action="exclude">state_owner_ignore_include_paths</filter>
+-  </ind:textfilecontent54_object>
+-
+-  <ind:textfilecontent54_state id="state_owner_ignore_include_paths" comment="ignore" version="1">
+-    <!-- Among the paths matched in object_rfp_log_files_paths there can be paths from
+-         include() or $IncludeConfig statements.
+-         These paths are conf files, not log files. Their owner don't need to be as
+-         required for log files, thus, lets exclude them from the list of objects found
+-    -->
+-    <ind:text operation="pattern match">(?:file="[^\s;]+"|\$IncludeConfig[\s]+[^\s;]+|\/dev\/.*)</ind:text>
+-  </ind:textfilecontent54_state>
+-
+-  <!-- Define OVAL variable to hold all the various system log files locations
+-       retrieved from the different rsyslog configuration files
+-  -->
+-  <local_variable id="var_rfo_log_files_paths" datatype="string" version="1" comment="File paths of all rsyslog configuration files">
+-    <object_component item_field="subexpression" object_ref="object_rfo_log_files_paths" />
+-  </local_variable>
+-
+-  <!-- Perform the test if all rsyslog system log files are owned by the appropriate user -->
+-  <unix:file_test check="all" check_existence="all_exist" id="test_rsyslog_files_ownership" version="1" comment="System log files are owned by the appropriate user">
+-    <unix:object object_ref="object_rsyslog_files_ownership" />
+-    <unix:state state_ref="state_rsyslog_files_ownership" />
+-  </unix:file_test>
+-
+-  <unix:file_object id="object_rsyslog_files_ownership" comment="Various system log files" version="1">
+-    <unix:filepath datatype="string" var_ref="var_rfo_log_files_paths" var_check="at least one" />
+-  </unix:file_object>
+-
+-  <unix:file_state id="state_rsyslog_files_ownership" version="1">
+-    <unix:type operation="equals">regular</unix:type>
+-
+-    {{% if product in ["ubuntu2004", "ubuntu2204"] %}}
+-    <unix:user_id datatype="int">104</unix:user_id>
+-    {{% else %}}
+-    <unix:user_id datatype="int">0</unix:user_id>
+-    {{% endif %}}
+-  </unix:file_state>
+-
+-</def-group>
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/rule.yml b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/rule.yml
+index 37c87b07cd..0d9bf40f4b 100644
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/rule.yml
++++ b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/rule.yml
+@@ -4,15 +4,36 @@ title: 'Ensure Log Files Are Owned By Appropriate User'
+ 
+ description: |-
+     The owner of all log files written by
+-    <tt>rsyslog</tt> should be <tt>{{{ xccdf_value("file_owner_logfiles_value") }}}</tt>.
++    <tt>rsyslog</tt> should be
++    {{% if product in ['ubuntu2204','ubuntu2004'] %}}
++    <tt>syslog</tt>.
++    {{% elif 'debian' in product or 'ubuntu' in product %}}
++    <tt>adm</tt>.
++    {{% else %}}
++    <tt>root</tt>.
++    {{% endif %}}
+     These log files are determined by the second part of each Rule line in
+     <tt>/etc/rsyslog.conf</tt> and typically all appear in <tt>/var/log</tt>.
+     For each log file <i>LOGFILE</i> referenced in <tt>/etc/rsyslog.conf</tt>,
+     run the following command to inspect the file's owner:
+     <pre>$ ls -l <i>LOGFILE</i></pre>
+-    If the owner is not <tt>{{{ xccdf_value("file_owner_logfiles_value") }}}</tt>, run the following command to
++    If the owner is not
++    {{% if product in ['ubuntu2204','ubuntu2004'] %}}
++    <tt>syslog</tt>,
++    {{% elif 'debian' in product or 'ubuntu' in product %}}
++    <tt>adm</tt>,
++    {{% else %}}
++    <tt>root</tt>,
++    {{% endif %}}
++    run the following command to
+     correct this:
+-    <pre>$ sudo chown {{{ xccdf_value("file_owner_logfiles_value") }}} <i>LOGFILE</i></pre>
++    {{% if product in ['ubuntu2204','ubuntu2004'] %}}
++    <pre>$ sudo chown syslog <i>LOGFILE</i></pre>
++    {{% elif 'debian' in product or 'ubuntu' in product %}}
++    <pre>$ sudo chown adm <i>LOGFILE</i></pre>
++    {{% else %}}
++    <pre>$ sudo chown root <i>LOGFILE</i></pre>
++    {{% endif %}}
+ 
+ rationale: |-
+     The log files generated by rsyslog contain valuable information regarding system
+@@ -47,8 +68,23 @@ references:
+ ocil_clause: 'the owner is not correct'
+ 
+ ocil: |-
+-    The owner of all log files written by <tt>rsyslog</tt> should be <tt>{{{ xccdf_value("file_owner_logfiles_value") }}}</tt>.
++    The owner of all log files written by <tt>rsyslog</tt> should be
++    {{% if product in ['ubuntu2204','ubuntu2004'] %}}
++    <tt>syslog</tt>.
++    {{% elif 'debian' in product or 'ubuntu' in product %}}
++    <tt>adm</tt>.
++    {{% else %}}
++    <tt>root</tt>.
++    {{% endif %}}
+     These log files are determined by the second part of each Rule line in
+     <tt>/etc/rsyslog.conf</tt> and typically all appear in <tt>/var/log</tt>.
+     To see the owner of a given log file, run the following command:
+     <pre>$ ls -l <i>LOGFILE</i></pre>
++
++template:
++  name: rsyslog_logfiles_attributes_modify
++  vars:
++    attribute: owner
++    value: 0
++    value@ubuntu2004: 104
++    value@ubuntu2204: 104
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/ansible/shared.yml b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/ansible/shared.yml
+new file mode 100644
+index 0000000000..041e263155
+--- /dev/null
++++ b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/ansible/shared.yml
+@@ -0,0 +1,12 @@
++# platform = multi_platform_sle
++# reboot = false
++# strategy = restrict
++# complexity = low
++# disruption = low
++
++- name: "Set rsyslog remote loghost"
++  lineinfile:
++    dest: /etc/rsyslog.conf
++    regexp: "^\\*\\.\\*"
++    line: "*.* /var/log/messages"
++    create: yes
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/bash/shared.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/bash/shared.sh
+new file mode 100644
+index 0000000000..d634610225
+--- /dev/null
++++ b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/bash/shared.sh
+@@ -0,0 +1,7 @@
++# platform = multi_platform_sle
++# reboot = false
++# strategy = restrict
++# complexity = low
++# disruption = low
++
++{{{ bash_replace_or_append('/etc/rsyslog.conf', '^\*\.\*', "/var/log/messages", '%s %s') }}}
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/oval/shared.xml b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/oval/shared.xml
+new file mode 100644
+index 0000000000..89e1e7616e
+--- /dev/null
++++ b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/oval/shared.xml
+@@ -0,0 +1,41 @@
++<def-group>
++  <definition class="compliance" id="rsyslog_logging_configured" version="1">
++    {{{ oval_metadata("Syslog logs should be configured") }}}
++
++    <criteria operator="AND">
++      {{% if product in ["debian10", "debian11", "ubuntu1604", "ubuntu1804"] %}}
++      <extend_definition comment="rsyslog daemon is used as local logging daemon" definition_ref="package_rsyslog_installed" />
++      {{% endif %}}
++      <criteria operator="OR">
++        <criterion comment="Logging configured within /etc/rsyslog.conf" test_ref="test_logging_configured_rsyslog_conf" />
++        <criterion comment="Remote logging set within /etc/rsyslog.d" test_ref="test_logging_configured_rsyslog_d" />
++      </criteria>
++    </criteria>
++  </definition>
++
++  <ind:textfilecontent54_test check="all" check_existence="all_exist"
++  comment="Ensures system logging configured in main conf file"
++  id="test_logging_configured_rsyslog_conf" version="1">
++    <ind:object object_ref="object_logging_configured_rsyslog_conf" />
++  </ind:textfilecontent54_test>
++
++  <ind:textfilecontent54_test check="all" check_existence="all_exist"
++  comment="Ensures system logging_configured in .d files"
++  id="test_logging_configured_rsyslog_d" version="1">
++    <ind:object object_ref="object_logging_configured_rsyslog_d" />
++  </ind:textfilecontent54_test>
++
++  <ind:textfilecontent54_object id="object_logging_configured_rsyslog_conf" version="1">
++    <ind:filepath>/etc/rsyslog.conf</ind:filepath>
++    <ind:pattern operation="pattern match">^[^(\s|#|\$)]+[\s]+.*[\s]+(\:\w+\:\S*|-?(\/+[^:;\s]+);*\.*)$</ind:pattern>
++    <ind:instance datatype="int">1</ind:instance>
++  </ind:textfilecontent54_object>
++
++  <ind:textfilecontent54_object id="object_logging_configured_rsyslog_d" version="1">
++    <ind:path>/etc/rsyslog.d</ind:path>
++    <ind:filename operation="pattern match">^.+\.conf$</ind:filename>
++    <ind:pattern operation="pattern match">^[^(\s|#|\$)]+[\s]+.*[\s]+(\:\w+\:\S*|-?(\/+[^:;\s]+);*\.*)$</ind:pattern>
++    <ind:instance datatype="int">1</ind:instance>
++  </ind:textfilecontent54_object>
++
++</def-group>
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/rule.yml b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/rule.yml
+new file mode 100644
+index 0000000000..f9477de9e9
+--- /dev/null
++++ b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/rule.yml
+@@ -0,0 +1,34 @@
++documentation_complete: true
++
++title: 'Ensure logging is configured'
++
++description: |-
++    The <tt>/etc/rsyslog.conf</tt> and <tt>/etc/rsyslog.d/*.conf</tt> files
++    specifies rules for logging and which files are to be used to log certain
++    classes of messages.
++
++rationale: |-
++    A great deal of important security-related information is sent via
++    rsyslog (e.g., successful and failed su attempts, failed login attempts,
++    root login attempts, etc.).
++
++severity: medium
++
++identifiers:
++    cce@sle12: CCE-92379-7
++    cce@sle15: CCE-92497-7
++
++references:
++    cis@sle12: 4.2.1.4
++    cis@sle15: 4.2.1.4
++
++ocil_clause: 'no logging is configured'
++
++ocil: |-
++    Review the contents of the <tt>/etc/rsyslog.conf</tt> and <tt>/etc/rsyslog.d/*.conf</tt>
++    files to ensure appropriate logging is set. In addition, run the following command:
++    <pre>ls -l /var/log/</pre>
++    and verify that the log files are logging information
++
++fixtext: |-
++    Configure logging with selectors covering each priority
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/tests/rsyslog_file_with_everything_logged_to_messages.pass.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/tests/rsyslog_file_with_everything_logged_to_messages.pass.sh
+new file mode 100644
+index 0000000000..a4fb1cf07a
+--- /dev/null
++++ b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/tests/rsyslog_file_with_everything_logged_to_messages.pass.sh
+@@ -0,0 +1,13 @@
++#!/bin/bash
++# platform = multi_platform_sle
++
++# Check rsyslog.conf with no includes and all loggging facility/priority configured to go to /var/log/messages
++
++source $SHARED/rsyslog_log_utils.sh
++cat << EOF > ${RSYSLOG_CONF}
++# rsyslog configuration file
++
++#### RULES ####
++
++*.*       /var/log/messages
++EOF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/tests/rsyslog_file_with_no_logging.fail.sh b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/tests/rsyslog_file_with_no_logging.fail.sh
+new file mode 100644
+index 0000000000..158cf4c98d
+--- /dev/null
++++ b/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_logging_configured/tests/rsyslog_file_with_no_logging.fail.sh
+@@ -0,0 +1,12 @@
++#!/bin/bash
++# platform = multi_platform_sle
++
++# Check rsyslog.conf with no includes and no loggging facility/priority configured
++
++source $SHARED/rsyslog_log_utils.sh
++cat << EOF > ${RSYSLOG_CONF}
++# rsyslog configuration file
++
++#### RULES ####
++
++EOF
+diff --git a/products/debian10/profiles/anssi_np_nt28_average.profile b/products/debian10/profiles/anssi_np_nt28_average.profile
+index 600f1a6f71..4c42814719 100644
+--- a/products/debian10/profiles/anssi_np_nt28_average.profile
++++ b/products/debian10/profiles/anssi_np_nt28_average.profile
+@@ -22,9 +22,7 @@ selections:
+     - sshd_allow_only_protocol2
+     - var_sshd_set_keepalive=0
+     - sshd_set_keepalive_0
+-    - file_owner_logfiles_value=adm
+     - rsyslog_files_ownership
+-    - file_groupowner_logfiles_value=adm
+     - rsyslog_files_groupownership
+     - rsyslog_files_permissions
+     - "!rsyslog_remote_loghost"
+diff --git a/products/debian10/profiles/standard.profile b/products/debian10/profiles/standard.profile
+index 3784182fa1..446f5aca1d 100644
+--- a/products/debian10/profiles/standard.profile
++++ b/products/debian10/profiles/standard.profile
+@@ -33,9 +33,7 @@ selections:
+     - sshd_allow_only_protocol2
+     - var_sshd_set_keepalive=0
+     - sshd_set_keepalive_0
+-    - file_owner_logfiles_value=adm
+     - rsyslog_files_ownership
+-    - file_groupowner_logfiles_value=adm
+     - rsyslog_files_groupownership
+     - rsyslog_files_permissions
+     - "!rsyslog_remote_loghost"
+diff --git a/products/debian11/profiles/anssi_np_nt28_average.profile b/products/debian11/profiles/anssi_np_nt28_average.profile
+index 600f1a6f71..4c42814719 100644
+--- a/products/debian11/profiles/anssi_np_nt28_average.profile
++++ b/products/debian11/profiles/anssi_np_nt28_average.profile
+@@ -22,9 +22,7 @@ selections:
+     - sshd_allow_only_protocol2
+     - var_sshd_set_keepalive=0
+     - sshd_set_keepalive_0
+-    - file_owner_logfiles_value=adm
+     - rsyslog_files_ownership
+-    - file_groupowner_logfiles_value=adm
+     - rsyslog_files_groupownership
+     - rsyslog_files_permissions
+     - "!rsyslog_remote_loghost"
+diff --git a/products/debian11/profiles/standard.profile b/products/debian11/profiles/standard.profile
+index e1b2c718df..c21f8d592b 100644
+--- a/products/debian11/profiles/standard.profile
++++ b/products/debian11/profiles/standard.profile
+@@ -33,9 +33,7 @@ selections:
+     - sshd_allow_only_protocol2
+     - var_sshd_set_keepalive=0
+     - sshd_set_keepalive_0
+-    - file_owner_logfiles_value=adm
+     - rsyslog_files_ownership
+-    - file_groupowner_logfiles_value=adm
+     - rsyslog_files_groupownership
+     - rsyslog_files_permissions
+     - "!rsyslog_remote_loghost"
+diff --git a/products/rhel7/profiles/rht-ccp.profile b/products/rhel7/profiles/rht-ccp.profile
+index 12a3a25013..a246d5a094 100644
+--- a/products/rhel7/profiles/rht-ccp.profile
++++ b/products/rhel7/profiles/rht-ccp.profile
+@@ -11,8 +11,6 @@ description: |-
+ selections:
+     - var_selinux_state=enforcing
+     - var_selinux_policy_name=targeted
+-    - file_owner_logfiles_value=root
+-    - file_groupowner_logfiles_value=root
+     - sshd_idle_timeout_value=5_minutes
+     - var_accounts_minimum_age_login_defs=7
+     - var_accounts_passwords_pam_faillock_deny=5
+diff --git a/products/rhel8/profiles/rht-ccp.profile b/products/rhel8/profiles/rht-ccp.profile
+index ae1e7d5a15..0a00d2f46b 100644
+--- a/products/rhel8/profiles/rht-ccp.profile
++++ b/products/rhel8/profiles/rht-ccp.profile
+@@ -11,8 +11,6 @@ description: |-
+ selections:
+     - var_selinux_state=enforcing
+     - var_selinux_policy_name=targeted
+-    - file_owner_logfiles_value=root
+-    - file_groupowner_logfiles_value=root
+     - sshd_idle_timeout_value=5_minutes
+     - var_logind_session_timeout=5_minutes
+     - var_accounts_minimum_age_login_defs=7
+diff --git a/products/sle12/profiles/anssi_bp28_intermediary.profile b/products/sle12/profiles/anssi_bp28_intermediary.profile
+index 24a98fd824..22498b6b6f 100644
+--- a/products/sle12/profiles/anssi_bp28_intermediary.profile
++++ b/products/sle12/profiles/anssi_bp28_intermediary.profile
+@@ -23,3 +23,4 @@ description: |-
+ 
+ selections:
+   - anssi:all:intermediary
++
+diff --git a/products/sle15/profiles/standard.profile b/products/sle15/profiles/standard.profile
+index 204804c2ee..1af0a865ef 100644
+--- a/products/sle15/profiles/standard.profile
++++ b/products/sle15/profiles/standard.profile
+@@ -29,9 +29,7 @@ selections:
+     - service_cron_enabled
+     - service_ntp_enabled
+     - service_rsyslog_enabled
+-    - file_owner_logfiles_value=adm
+     - rsyslog_files_ownership
+-    - file_groupowner_logfiles_value=adm
+     - rsyslog_files_groupownership
+     - rsyslog_files_permissions
+     - ensure_logrotate_activated
+diff --git a/products/ubuntu1604/profiles/anssi_np_nt28_average.profile b/products/ubuntu1604/profiles/anssi_np_nt28_average.profile
+index 600f1a6f71..4c42814719 100644
+--- a/products/ubuntu1604/profiles/anssi_np_nt28_average.profile
++++ b/products/ubuntu1604/profiles/anssi_np_nt28_average.profile
+@@ -22,9 +22,7 @@ selections:
+     - sshd_allow_only_protocol2
+     - var_sshd_set_keepalive=0
+     - sshd_set_keepalive_0
+-    - file_owner_logfiles_value=adm
+     - rsyslog_files_ownership
+-    - file_groupowner_logfiles_value=adm
+     - rsyslog_files_groupownership
+     - rsyslog_files_permissions
+     - "!rsyslog_remote_loghost"
+diff --git a/products/ubuntu1604/profiles/standard.profile b/products/ubuntu1604/profiles/standard.profile
+index 6fd70f0da6..93001f3bfe 100644
+--- a/products/ubuntu1604/profiles/standard.profile
++++ b/products/ubuntu1604/profiles/standard.profile
+@@ -34,9 +34,7 @@ selections:
+     - sshd_allow_only_protocol2
+     - var_sshd_set_keepalive=0
+     - sshd_set_keepalive_0
+-    - file_owner_logfiles_value=adm
+     - rsyslog_files_ownership
+-    - file_groupowner_logfiles_value=adm
+     - rsyslog_files_groupownership
+     - rsyslog_files_permissions
+     - "!rsyslog_remote_loghost"
+diff --git a/products/ubuntu1804/profiles/anssi_np_nt28_average.profile b/products/ubuntu1804/profiles/anssi_np_nt28_average.profile
+index 600f1a6f71..4c42814719 100644
+--- a/products/ubuntu1804/profiles/anssi_np_nt28_average.profile
++++ b/products/ubuntu1804/profiles/anssi_np_nt28_average.profile
+@@ -22,9 +22,7 @@ selections:
+     - sshd_allow_only_protocol2
+     - var_sshd_set_keepalive=0
+     - sshd_set_keepalive_0
+-    - file_owner_logfiles_value=adm
+     - rsyslog_files_ownership
+-    - file_groupowner_logfiles_value=adm
+     - rsyslog_files_groupownership
+     - rsyslog_files_permissions
+     - "!rsyslog_remote_loghost"
+diff --git a/products/ubuntu1804/profiles/standard.profile b/products/ubuntu1804/profiles/standard.profile
+index d587d499d8..a17117818e 100644
+--- a/products/ubuntu1804/profiles/standard.profile
++++ b/products/ubuntu1804/profiles/standard.profile
+@@ -32,9 +32,7 @@ selections:
+     - sshd_allow_only_protocol2
+     - var_sshd_set_keepalive=0
+     - sshd_set_keepalive_0
+-    - file_owner_logfiles_value=adm
+     - rsyslog_files_ownership
+-    - file_groupowner_logfiles_value=adm
+     - rsyslog_files_groupownership
+     - rsyslog_files_permissions
+     - "!rsyslog_remote_loghost"
+diff --git a/products/ubuntu2004/profiles/standard.profile b/products/ubuntu2004/profiles/standard.profile
+index 823a69a5d9..6ed27aa16d 100644
+--- a/products/ubuntu2004/profiles/standard.profile
++++ b/products/ubuntu2004/profiles/standard.profile
+@@ -31,9 +31,7 @@ selections:
+     - sshd_disable_empty_passwords
+     - var_sshd_set_keepalive=0
+     - sshd_set_keepalive
+-    - file_owner_logfiles_value=syslog
+     - rsyslog_files_ownership
+-    - file_groupowner_logfiles_value=adm
+     - rsyslog_files_groupownership
+     - rsyslog_files_permissions
+     - "!rsyslog_remote_loghost"
+diff --git a/products/ubuntu2204/profiles/standard.profile b/products/ubuntu2204/profiles/standard.profile
+index c8bc5369c9..1bb9f43e7d 100644
+--- a/products/ubuntu2204/profiles/standard.profile
++++ b/products/ubuntu2204/profiles/standard.profile
+@@ -31,9 +31,7 @@ selections:
+     - sshd_disable_empty_passwords
+     - var_sshd_set_keepalive=0
+     - sshd_set_keepalive
+-    - file_owner_logfiles_value=syslog
+     - rsyslog_files_ownership
+-    - file_groupowner_logfiles_value=adm
+     - rsyslog_files_groupownership
+     - rsyslog_files_permissions
+     - "!rsyslog_remote_loghost"
+diff --git a/shared/references/cce-sle12-avail.txt b/shared/references/cce-sle12-avail.txt
+index c119834759..4e0a76f8de 100644
+--- a/shared/references/cce-sle12-avail.txt
++++ b/shared/references/cce-sle12-avail.txt
+@@ -54,7 +54,6 @@ CCE-92375-5
+ CCE-92376-3
+ CCE-92377-1
+ CCE-92378-9
+-CCE-92379-7
+ CCE-92380-5
+ CCE-92381-3
+ CCE-92382-1
+diff --git a/shared/references/cce-sle15-avail.txt b/shared/references/cce-sle15-avail.txt
+index d04c40d31f..e39dae033e 100644
+--- a/shared/references/cce-sle15-avail.txt
++++ b/shared/references/cce-sle15-avail.txt
+@@ -17,7 +17,6 @@ CCE-92492-8
+ CCE-92493-6
+ CCE-92495-1
+ CCE-92496-9
+-CCE-92497-7
+ CCE-92498-5
+ CCE-92499-3
+ CCE-92500-8
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/ansible.template b/shared/templates/rsyslog_logfiles_attributes_modify/ansible.template
+new file mode 100644
+index 0000000000..fc9e8844b6
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/ansible.template
+@@ -0,0 +1,68 @@
++# platform = multi_platform_all
++# reboot = false
++# strategy = configure
++# complexity = low
++# disruption = medium
++
++- name: '{{{ rule_title }}} - Set rsyslog logfile configuration facts'
++  ansible.builtin.set_fact:
++    rsyslog_etc_config: "/etc/rsyslog.conf"
++
++# * And also the log file paths listed after rsyslog's $IncludeConfig directive
++#   (store the result into array for the case there's shell glob used as value of IncludeConfig)
++- name: '{{{ rule_title }}} - Get IncludeConfig directive'
++  ansible.builtin.shell: |
++    set -o pipefail
++    grep -e '$IncludeConfig' {{ rsyslog_etc_config }} | cut -d ' ' -f 2 || true
++  register: rsyslog_old_inc
++  changed_when: False
++
++- name: '{{{ rule_title }}} - Get include files directives'
++  ansible.builtin.shell: |
++    set -o pipefail
++    grep -oP '^\s*include\s*\(\s*file.*' {{ rsyslog_etc_config }} |cut  -d"\"" -f 2 || true
++  register: rsyslog_new_inc
++  changed_when: False
++
++- name: '{{{ rule_title }}} - Aggregate rsyslog includes'
++  ansible.builtin.set_fact:
++    include_config_output: "{{ rsyslog_old_inc.stdout_lines + rsyslog_new_inc.stdout_lines }}"
++
++- name: '{{{ rule_title }}} - List all config files'
++  ansible.builtin.find:
++    paths: "{{ include_config_output | list | map('dirname') }}"
++    patterns: "{{ include_config_output | list | map('basename') }}"
++    hidden: no
++    follow: yes
++  register: rsyslog_config_files
++  failed_when: False
++  changed_when: False
++
++- name: '{{{ rule_title }}} - Extract log files old format'
++  ansible.builtin.shell: |
++    set -o pipefail
++    grep -oP '^[^(\s|#|\$)]+[\s]+.*[\s]+-?(/+[^:;\s]+);*\.*$' {{ item }}  |awk '{print $NF}'|sed -e 's/^-//' || true
++  loop: "{{ rsyslog_config_files.files|map(attribute='path')|list|flatten|unique + [ rsyslog_etc_config ] }}"
++  register: log_files_old
++  changed_when: False
++
++- name: '{{{ rule_title }}} - Extract log files new format'
++  ansible.builtin.shell: |
++    set -o pipefail
++    grep -ozP "action\s*\(\s*type\s*=\s*\"omfile\"[^\)]*\)" {{ item }} | grep -aoP "File\s*=\s*\"([/[:alnum:][:punct:]]*)\"\s*\)"|grep -oE "\"([/[:alnum:][:punct:]]*)\"" |tr -d "\""|| true
++  loop: "{{ rsyslog_config_files.files|map(attribute='path')|list|flatten|unique + [ rsyslog_etc_config ] }}"
++  register: log_files_new
++  changed_when: False
++
++- name: '{{{ rule_title }}} - Sum all log files found'
++  ansible.builtin.set_fact:
++    log_files: "{{ log_files_new.results|map(attribute='stdout_lines')|list|flatten|unique + log_files_old.results|map(attribute='stdout_lines')|list|flatten|unique  }}"
++
++- name: '{{{ rule_title }}} -Setup log files attribute'
++  ansible.builtin.file:
++    path: "{{ item }}"
++    owner: '{{ ( "{{{ ATTRIBUTE }}}" is match("owner")) | ternary({{{ VALUE }}}, omit) }}'
++    group: '{{ ( "{{{ ATTRIBUTE }}}" is match("groupowner")) | ternary({{{ VALUE }}} , omit) }}'
++    state: file
++  loop: "{{ log_files | list | flatten | unique }}"
++  failed_when: false
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/bash.template b/shared/templates/rsyslog_logfiles_attributes_modify/bash.template
+new file mode 100644
+index 0000000000..ab4a563dc5
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/bash.template
+@@ -0,0 +1,110 @@
++# platform = multi_platform_all
++
++# List of log file paths to be inspected for correct permissions
++# * Primarily inspect log file paths listed in /etc/rsyslog.conf
++RSYSLOG_ETC_CONFIG="/etc/rsyslog.conf"
++# * And also the log file paths listed after rsyslog's $IncludeConfig directive
++#   (store the result into array for the case there's shell glob used as value of IncludeConfig)
++readarray -t OLD_INC < <(grep -e "\$IncludeConfig[[:space:]]\+[^[:space:];]\+" /etc/rsyslog.conf | cut -d ' ' -f 2)
++readarray -t RSYSLOG_INCLUDE_CONFIG < <(for INCPATH in "${OLD_INC[@]}"; do eval printf '%s\\n' "${INCPATH}"; done)
++readarray -t NEW_INC < <(awk '/)/{f=0} /include\(/{f=1} f{nf=gensub("^(include\\(|\\s*)file=\"(\\S+)\".*","\\2",1); if($0!=nf){print nf}}' /etc/rsyslog.conf)
++readarray -t RSYSLOG_INCLUDE < <(for INCPATH in "${NEW_INC[@]}"; do eval printf '%s\\n' "${INCPATH}"; done)
++
++# Declare an array to hold the final list of different log file paths
++declare -a LOG_FILE_PATHS
++
++# Array to hold all rsyslog config entries
++RSYSLOG_CONFIGS=()
++RSYSLOG_CONFIGS=("${RSYSLOG_ETC_CONFIG}" "${RSYSLOG_INCLUDE_CONFIG[@]}" "${RSYSLOG_INCLUDE[@]}")
++
++# Get full list of files to be checked
++# RSYSLOG_CONFIGS may contain globs such as
++# /etc/rsyslog.d/*.conf /etc/rsyslog.d/*.frule
++# So, loop over the entries in RSYSLOG_CONFIGS and use find to get the list of included files.
++RSYSLOG_CONFIG_FILES=()
++for ENTRY in "${RSYSLOG_CONFIGS[@]}"
++do
++	# If directory, rsyslog will search for config files in recursively.
++	# However, files in hidden sub-directories or hidden files will be ignored.
++	if [ -d "${ENTRY}" ]
++	then
++		readarray -t FINDOUT < <(find "${ENTRY}" -not -path '*/.*' -type f)
++		RSYSLOG_CONFIG_FILES+=("${FINDOUT[@]}")
++	elif [ -f "${ENTRY}" ]
++	then
++		RSYSLOG_CONFIG_FILES+=("${ENTRY}")
++	else
++		echo "Invalid include object: ${ENTRY}"
++	fi
++done
++
++# Browse each file selected above as containing paths of log files
++# ('/etc/rsyslog.conf' and '/etc/rsyslog.d/*.conf' in the default configuration)
++for LOG_FILE in "${RSYSLOG_CONFIG_FILES[@]}"
++do
++	# From each of these files extract just particular log file path(s), thus:
++	# * Ignore lines starting with space (' '), comment ('#"), or variable syntax ('$') characters,
++	# * Ignore empty lines,
++	# * Strip quotes and closing brackets from paths.
++	# * Ignore paths that match /dev|/etc.*\.conf, as those are paths, but likely not log files
++	# * From the remaining valid rows select only fields constituting a log file path
++	# Text file column is understood to represent a log file path if and only if all of the following are met:
++	# * it contains at least one slash '/' character,
++	# * it is preceded by space
++	# * it doesn't contain space (' '), colon (':'), and semicolon (';') characters
++	# Search log file for path(s) only in case it exists!
++	if [[ -f "${LOG_FILE}" ]]
++	then
++		NORMALIZED_CONFIG_FILE_LINES=$(sed -e "/^[#|$]/d" "${LOG_FILE}")
++		LINES_WITH_PATHS=$(grep '[^/]*\s\+\S*/\S\+$' <<< "${NORMALIZED_CONFIG_FILE_LINES}")
++		FILTERED_PATHS=$(awk '{if(NF>=2&&($NF~/^\//||$NF~/^-\//)){sub(/^-\//,"/",$NF);print $NF}}' <<< "${LINES_WITH_PATHS}")
++		CLEANED_PATHS=$(sed -e "s/[\"')]//g; /\\/etc.*\.conf/d; /\\/dev\\//d" <<< "${FILTERED_PATHS}")
++		MATCHED_ITEMS=$(sed -e "/^$/d" <<< "${CLEANED_PATHS}")
++		# Since above sed command might return more than one item (delimited by newline), split the particular
++		# matches entries into new array specific for this log file
++		readarray -t ARRAY_FOR_LOG_FILE <<< "$MATCHED_ITEMS"
++		# Concatenate the two arrays - previous content of $LOG_FILE_PATHS array with
++		# items from newly created array for this log file
++		LOG_FILE_PATHS+=("${ARRAY_FOR_LOG_FILE[@]}")
++		# Delete the temporary array
++		unset ARRAY_FOR_LOG_FILE
++	fi
++done
++
++# Check for RainerScript action log format which might be also multiline so grep regex is a bit curly
++# extract possibly multiline action omfile expressions
++# extract File="logfile" expression
++# match only "logfile" expression
++for LOG_FILE in "${RSYSLOG_CONFIG_FILES[@]}"
++do
++	ACTION_OMFILE_LINES=$(grep -ozP "action\s*\(\s*type\s*=\s*\"omfile\"[^\)]*\)" "${LOG_FILE}")
++	OMFILE_LINES=$(echo "${ACTION_OMFILE_LINES}"| grep -aoP "File\s*=\s*\"([/[:alnum:][:punct:]]*)\"\s*\)")
++	LOG_FILE_PATHS+=("$(echo "${OMFILE_LINES}"| grep -oE "\"([/[:alnum:][:punct:]]*)\""|tr -d "\"")")
++done
++
++FILE_PARAM="{{{ ATTRIBUTE }}}"
++FILE_CMD=""
++case "$FILE_PARAM" in
++     "groupowner")
++        FILE_CMD=$(which chgrp)
++        ;;
++     "owner")
++        FILE_CMD=$(which chown)
++        ;;
++      *)
++        echo -n "Not supported file attribute! "
++        exit 1
++      ;;
++esac
++
++# Correct the form o
++for LOG_FILE_PATH in "${LOG_FILE_PATHS[@]}"
++do
++	# Sanity check - if particular $LOG_FILE_PATH is empty string, skip it from further processing
++	if [ -z "$LOG_FILE_PATH" ]
++	then
++		continue
++	fi
++
++	$FILE_CMD "+{{{ VALUE }}}" "$LOG_FILE_PATH"
++done
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/oval.template b/shared/templates/rsyslog_logfiles_attributes_modify/oval.template
+new file mode 100644
+index 0000000000..4f288df1c9
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/oval.template
+@@ -0,0 +1,137 @@
++<def-group oval_version="5.11">
++  <definition class="compliance" id="{{{_RULE_ID }}}" version="1">
++    {{{ oval_metadata("All syslog log files should have appropriate ownership.") }}}
++    <criteria operator="AND">
++      {{% if product in ["debian10", "debian11", "ubuntu1604"] %}}
++      <extend_definition comment="rsyslog daemon is used as local logging daemon"
++      definition_ref="package_rsyslog_installed" />
++      {{% endif %}}
++      <criterion comment="Check if all system log files are owned by the appropriate 
++      {{{ ATTRIBUTE  }}}" test_ref="test_{{{ _RULE_ID }}}" />
++    </criteria>
++
++  </definition>
++
++  <!-- First obtain rsyslog's $IncludeConfig directive and include() object (introduced in rsyslog
++  v8.33.0) values.  -->
++  
++  <ind:textfilecontent54_object id="object_{{{ _RULE_ID }}}_include_config_value"
++       comment="rsyslog's $IncludeConfig directive and include() object values" version="1">
++    <ind:filepath>/etc/rsyslog.conf</ind:filepath>
++    <ind:pattern
++    operation="pattern match">^(?:include\([\n\s]*file="([^\s;]+)".*|\$IncludeConfig[\s]+([^\s;]+))$</ind:pattern>
++    <ind:instance datatype="int" operation="greater than or equal">1</ind:instance>
++  </ind:textfilecontent54_object>
++
++  <!-- Turn that glob value into Perl's regex so it can be used as filepath pattern below -->
++  <local_variable id="var_{{{ _RULE_ID }}}_include_config_regex" datatype="string" version="1"
++  comment="$IncludeConfig value converted to regex">
++    <unique>
++      <glob_to_regex>
++        <object_component item_field="subexpression"
++                          object_ref="object_{{{ _RULE_ID }}}_include_config_value" />
++      </glob_to_regex>
++    </unique>
++  </local_variable>
++
++  <!-- Create a variable_object from the regex variable
++       If the variable has no values, there won't be any objects -->
++  <ind:variable_object id="object_var_{{{ _RULE_ID }}}_include_config_regex"
++                       comment="Make variable object from regex variable" version="1">
++    <ind:var_ref>var_{{{ _RULE_ID }}}_include_config_regex</ind:var_ref>
++  </ind:variable_object>
++
++  <local_variable id="var_{{{ _RULE_ID }}}_syslog_config" datatype="string"
++                  version="1" comment="Locations of all rsyslog configuration files as collection">
++    <literal_component datatype="string">^/etc/rsyslog.conf$</literal_component>
++  </local_variable>
++
++  <ind:variable_object id="object_var_{{{ _RULE_ID }}}_syslog_config"
++                       comment="Make variable object for use" version="1">
++    <ind:var_ref>var_{{{ _RULE_ID }}}_syslog_config</ind:var_ref>
++  </ind:variable_object>
++
++  <!-- Combine the two variable_objects into one variable_object
++       We do it this way to avoid referencing an empty variable in a state comparison, which
++       will cause a test to evaluate to fail. Combining an empty set of objects is fine though -->
++  <ind:variable_object id="object_var_{{{ _RULE_ID }}}_all_log_files"
++                       comment="Filter out empty string" version="1">
++    <set>
++      <object_reference>object_var_{{{ _RULE_ID }}}_include_config_regex</object_reference>
++      <object_reference>object_var_{{{ _RULE_ID }}}_syslog_config</object_reference>
++    </set>
++  </ind:variable_object>
++
++  <!-- In element filepath of object_rfg_log_files_paths we need to pass a list of values,
++       a list of objects won't do. So we make a local_variable from the variable_objects. -->
++  <local_variable id="var_{{{ _RULE_ID }}}_all_log_files" datatype="string" version="1"
++                  comment="Locations of all rsyslog configuration files as collection">
++    <object_component object_ref="object_var_{{{ _RULE_ID }}}_all_log_files" item_field="value"/>
++  </local_variable>
++
++  <!-- For each item from that collection (particular rsyslog's configuration file path) search
++       that rsyslog's configuration file to select file paths for log files directives
++  -->
++  <ind:textfilecontent54_object id="object_{{{ _RULE_ID }}}_log_files_paths"
++                                comment="All rsyslog configuration files" version="1">
++    <ind:filepath operation="pattern match" var_ref="var_{{{ _RULE_ID }}}_all_log_files"
++                  var_check="at least one" />
++    <!-- Chunk of text retrieved from rsyslog's configuration file is considered
++         to constitute a log file path if all of the following conditions are met:
++         * the string represents a regular file on particular file system
++           (verified via corresponding file_state below),
++         * the chunk of text is in the last column in the row,
++           (possibly suffixed by ';' character and rsyslog Template name),
++         * contains at least one slash '/' character, and simultaneously
++           doesn't contain any of ';', ':' and space characters,
++         * the chunk was retrieved from a row not starting with space, '#',
++           or '$' characters
++    -->
++    <ind:pattern 
++     operation="pattern match">^\s*[^(\s|#|\$)]+\s+-?[\w\(="\s]*(\/[^:;\s"]+)+.*$</ind:pattern>
++    <ind:instance datatype="int" operation="greater than or equal">1</ind:instance>
++    <filter action="exclude">state_{{{ _RULE_ID }}}_ownership_ignore_include_paths</filter>
++  </ind:textfilecontent54_object>
++
++  <ind:textfilecontent54_state id="state_{{{ _RULE_ID }}}_ownership_ignore_include_paths"
++                               comment="ignore" version="1">
++    <!-- Among the paths matched in object_rfp_log_files_paths there can be paths from
++         include() or $IncludeConfig statements.
++         These paths are conf files, not log files. Their groupownership don't need to be as
++         required for log files, thus, lets exclude them from the list of objects found
++    -->
++    <ind:text
++    operation="pattern match">(?:file="[^\s;]+"|\$IncludeConfig[\s]+[^\s;]+|\/dev\/.*)</ind:text>
++  </ind:textfilecontent54_state>
++
++  <!-- Define OVAL variable to hold all the various system log files locations
++       retrieved from the different rsyslog configuration files
++  -->
++  <local_variable id="var_{{{ _RULE_ID }}}_log_files_paths" datatype="string" version="1"
++                  comment="File paths of all rsyslog configuration files">
++    <object_component item_field="subexpression" object_ref="object_{{{ _RULE_ID }}}_log_files_paths" />
++  </local_variable>
++
++  <!-- Perform the test if all rsyslog system log files are owned by the appropriate group -->
++  <unix:file_test check="all" check_existence="all_exist" id="test_{{{ _RULE_ID }}}" version="1"
++                  comment="System log files are owned by the appropriate group">
++    <unix:object object_ref="object_rsyslog_files_{{{ _RULE_ID }}}_ownership" />
++    <unix:state state_ref="state_{{{ _RULE_ID }}}" />
++  </unix:file_test>
++
++  <unix:file_object id="object_rsyslog_files_{{{ _RULE_ID }}}_ownership"
++                    comment="Various system log files" version="1">
++    <unix:filepath datatype="string" var_ref="var_{{{ _RULE_ID }}}_log_files_paths"
++                   var_check="at least one" />
++  </unix:file_object>
++
++  <unix:file_state id="state_{{{ _RULE_ID }}}" version="1">
++    <unix:type operation="equals">regular</unix:type>
++    {{% if ATTRIBUTE == "groupowner" %}}
++    <unix:group_id datatype="int">{{{ VALUE }}}</unix:group_id>
++    {{% else %}}
++    <unix:user_id datatype="int">{{{ VALUE }}}</unix:user_id>
++   {{% endif %}}
++  </unix:file_state>
++
++</def-group>
+diff --git a/shared/templates/rsyslog_logfiles_attributes_modify/template.yml b/shared/templates/rsyslog_logfiles_attributes_modify/template.yml
+new file mode 100644
+index 0000000000..b57de6fbb6
+--- /dev/null
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/template.yml
+@@ -0,0 +1,4 @@
++supported_languages:
++  - ansible
++  - bash
++  - oval
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/IncludeConfig_is_other.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/IncludeConfig_is_other.fail.sh
+similarity index 75%
+rename from linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/IncludeConfig_is_other.fail.sh
+rename to shared/templates/rsyslog_logfiles_attributes_modify/tests/IncludeConfig_is_other.fail.sh
+index 6c82a1942f..db7e5261eb 100755
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/IncludeConfig_is_other.fail.sh
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/IncludeConfig_is_other.fail.sh
+@@ -6,8 +6,16 @@
+ 
+ source $SHARED/rsyslog_log_utils.sh
+ 
++{{% if ATTRIBUTE == "owner" %}}
++ADDCOMMAND="useradd"
++CHATTR="chown"
++{{% else %}}
++ADDCOMMAND="groupadd"
++CHATTR="chgrp"
++{{% endif %}}
++
+ USER_TEST=testssg
+-useradd $USER_TEST
++$ADDCOMMAND $USER_TEST
+ 
+ USER_ROOT=root
+ 
+@@ -15,8 +23,8 @@ USER_ROOT=root
+ create_rsyslog_test_logs 2
+ 
+ # setup test log files ownership
+-chown $USER_ROOT ${RSYSLOG_TEST_LOGS[0]}
+-chown $USER_TEST ${RSYSLOG_TEST_LOGS[1]}
++$CHATTR $USER_ROOT ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $USER_TEST ${RSYSLOG_TEST_LOGS[1]}
+ 
+ # create test configuration file
+ test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/IncludeConfig_is_root.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/IncludeConfig_is_root.pass.sh
+similarity index 81%
+rename from linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/IncludeConfig_is_root.pass.sh
+rename to shared/templates/rsyslog_logfiles_attributes_modify/tests/IncludeConfig_is_root.pass.sh
+index b24e5e1699..b03268fe3e 100755
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/IncludeConfig_is_root.pass.sh
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/IncludeConfig_is_root.pass.sh
+@@ -6,14 +6,20 @@
+ 
+ source $SHARED/rsyslog_log_utils.sh
+ 
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++{{% else %}}
++CHATTR="chgrp"
++{{% endif %}}
++
+ USER=root
+ 
+ # setup test data
+ create_rsyslog_test_logs 2
+ 
+ # setup test log files ownership
+-chown $USER ${RSYSLOG_TEST_LOGS[0]}
+-chown $USER ${RSYSLOG_TEST_LOGS[1]}
++$CHATTR $USER ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $USER ${RSYSLOG_TEST_LOGS[1]}
+ 
+ # create test configuration file
+ test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/include_is_other.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_other.fail.sh
+similarity index 75%
+rename from linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/include_is_other.fail.sh
+rename to shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_other.fail.sh
+index 18f43c6927..d79ae23cfc 100755
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/include_is_other.fail.sh
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_other.fail.sh
+@@ -6,8 +6,16 @@
+ 
+ source $SHARED/rsyslog_log_utils.sh
+ 
++{{% if ATTRIBUTE == "owner" %}}
++ADDCOMMAND="useradd"
++CHATTR="chown"
++{{% else %}}
++ADDCOMMAND="groupadd"
++CHATTR="chgrp"
++{{% endif %}}
++
+ USER_TEST=testssg
+-useradd $USER_TEST
++$ADDCOMMAND $USER_TEST
+ 
+ USER_ROOT=root
+ 
+@@ -15,8 +23,8 @@ USER_ROOT=root
+ create_rsyslog_test_logs 2
+ 
+ # setup test log files ownership
+-chown $USER_ROOT ${RSYSLOG_TEST_LOGS[0]}
+-chown $USER_TEST ${RSYSLOG_TEST_LOGS[1]}
++$CHATTR $USER_ROOT ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $USER_TEST ${RSYSLOG_TEST_LOGS[1]}
+ 
+ # create test configuration file
+ test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_root_IncludeConfig_is_root.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_other_IncludeConfig_is_other_RainerLogClause.fail.sh
+old mode 100755
+new mode 100644
+similarity index 50%
+rename from linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_root_IncludeConfig_is_root.pass.sh
+rename to shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_other_IncludeConfig_is_other_RainerLogClause.fail.sh
+index 05dd50ed24..7869a180a8
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_root_IncludeConfig_is_root.pass.sh
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_other_IncludeConfig_is_other_RainerLogClause.fail.sh
+@@ -1,20 +1,31 @@
+ #!/bin/bash
+ # platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+ 
+-# Check rsyslog.conf with root group-owner log from rules and
+-# root group-owner log from include() passes.
++# Check rsyslog.conf with root user log from rules and
++# root user log from include() passes.
+ 
+ source $SHARED/rsyslog_log_utils.sh
+ 
+-GROUP=root
++{{% if ATTRIBUTE == "owner" %}}
++ADDCOMMAND="useradd"
++CHATTR="chown"
++{{% else %}}
++ADDCOMMAND="groupadd"
++CHATTR="chgrp"
++{{% endif %}}
++
++USER_TEST=testssg
++$ADDCOMMAND $USER_TEST
++
++USER=root
+ 
+ # setup test data
+ create_rsyslog_test_logs 3
+ 
+ # setup test log files ownership
+-chgrp $GROUP ${RSYSLOG_TEST_LOGS[0]}
+-chgrp $GROUP ${RSYSLOG_TEST_LOGS[1]}
+-chgrp $GROUP ${RSYSLOG_TEST_LOGS[2]}
++$CHATTR $USER_TEST ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $USER_TEST ${RSYSLOG_TEST_LOGS[1]}
++$CHATTR $USER_TEST ${RSYSLOG_TEST_LOGS[2]}
+ 
+ # create test configuration file
+ test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+@@ -28,13 +39,25 @@ EOF
+ 
+ # create test2 configuration file
+ test_conf2=${RSYSLOG_TEST_DIR}/test2.conf
++{{% if ATTRIBUTE == "owner" %}}
++cat << EOF > ${test_conf2}
++# rsyslog configuration file
++
++#### RULES ####
++
++
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="$USER_TEST" fileGroup="root" File="${RSYSLOG_TEST_LOGS[2]}")
++EOF
++{{% else %}}
+ cat << EOF > ${test_conf2}
+ # rsyslog configuration file
+ 
+ #### RULES ####
+ 
+-*.*     ${RSYSLOG_TEST_LOGS[2]}
++
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="$USER_TEST" File="${RSYSLOG_TEST_LOGS[2]}")
+ EOF
++{{% endif %}}
+ 
+ # create rsyslog.conf configuration file
+ cat << EOF > $RSYSLOG_CONF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/include_is_root.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root.pass.sh
+similarity index 81%
+rename from linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/include_is_root.pass.sh
+rename to shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root.pass.sh
+index 69dead5135..e80395ca99 100755
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/include_is_root.pass.sh
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root.pass.sh
+@@ -6,14 +6,21 @@
+ 
+ source $SHARED/rsyslog_log_utils.sh
+ 
++
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++{{% else %}}
++CHATTR="chgrp"
++{{% endif %}}
++
+ USER=root
+ 
+ # setup test data
+ create_rsyslog_test_logs 2
+ 
+ # setup test log files ownership
+-chown $USER ${RSYSLOG_TEST_LOGS[0]}
+-chown $USER ${RSYSLOG_TEST_LOGS[1]}
++$CHATTR $USER ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $USER ${RSYSLOG_TEST_LOGS[1]}
+ 
+ # create test configuration file
+ test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/include_is_root_IncludeConfig_is_other.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_other.fail.sh
+similarity index 77%
+rename from linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/include_is_root_IncludeConfig_is_other.fail.sh
+rename to shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_other.fail.sh
+index e725fb4d54..e7b4905dc5 100755
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/include_is_root_IncludeConfig_is_other.fail.sh
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_other.fail.sh
+@@ -6,18 +6,26 @@
+ 
+ source $SHARED/rsyslog_log_utils.sh
+ 
++{{% if ATTRIBUTE == "owner" %}}
++ADDCOMMAND="useradd"
++CHATTR="chown"
++{{% else %}}
++ADDCOMMAND="groupadd"
++CHATTR="chgrp"
++{{% endif %}}
++
+ USER_ROOT=root
+ 
+ USER_TEST=testssg
+-useradd $USER_TEST
++$ADDCOMMAND $USER_TEST
+ 
+ # setup test data
+ create_rsyslog_test_logs 3
+ 
+ # setup test log files ownership
+-chown $USER_ROOT ${RSYSLOG_TEST_LOGS[0]}
+-chown $USER_ROOT ${RSYSLOG_TEST_LOGS[1]}
+-chown $USER_TEST ${RSYSLOG_TEST_LOGS[2]}
++$CHATTR $USER_ROOT ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $USER_ROOT ${RSYSLOG_TEST_LOGS[1]}
++$CHATTR $USER_TEST ${RSYSLOG_TEST_LOGS[2]}
+ 
+ # create test configuration file
+ test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/include_is_root_IncludeConfig_is_root.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_root.pass.sh
+similarity index 82%
+rename from linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/include_is_root_IncludeConfig_is_root.pass.sh
+rename to shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_root.pass.sh
+index ca47d453c1..6389e6ea3b 100755
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/include_is_root_IncludeConfig_is_root.pass.sh
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_root.pass.sh
+@@ -6,15 +6,21 @@
+ 
+ source $SHARED/rsyslog_log_utils.sh
+ 
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++{{% else %}}
++CHATTR="chgrp"
++{{% endif %}}
++
+ USER=root
+ 
+ # setup test data
+ create_rsyslog_test_logs 3
+ 
+ # setup test log files ownership
+-chown $USER ${RSYSLOG_TEST_LOGS[0]}
+-chown $USER ${RSYSLOG_TEST_LOGS[1]}
+-chown $USER ${RSYSLOG_TEST_LOGS[2]}
++$CHATTR $USER ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $USER ${RSYSLOG_TEST_LOGS[1]}
++$CHATTR $USER ${RSYSLOG_TEST_LOGS[2]}
+ 
+ # create test configuration file
+ test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_root_IncludeConfig_is_other.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_root_RainerLogClause.pass.sh
+similarity index 65%
+rename from linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_root_IncludeConfig_is_other.fail.sh
+rename to shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_root_RainerLogClause.pass.sh
+index 9747e0b28b..6b81a77c2f 100755
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_groupownership/tests/include_is_root_IncludeConfig_is_other.fail.sh
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_is_root_IncludeConfig_is_root_RainerLogClause.pass.sh
+@@ -1,23 +1,26 @@
+ #!/bin/bash
+ # platform = Red Hat Enterprise Linux 8,multi_platform_fedora,Oracle Linux 8,multi_platform_sle
+ 
+-# Check rsyslog.conf with root group-owner log from rules and
+-# non root group-owner log from include() fails.
++# Check rsyslog.conf with root user log from rules and
++# root user log from include() passes.
+ 
+ source $SHARED/rsyslog_log_utils.sh
+ 
+-GROUP_ROOT=root
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++{{% else %}}
++CHATTR="chgrp"
++{{% endif %}}
+ 
+-GROUP_TEST=testssg
+-groupadd $GROUP_TEST
++USER=root
+ 
+ # setup test data
+ create_rsyslog_test_logs 3
+ 
+ # setup test log files ownership
+-chgrp $GROUP_ROOT ${RSYSLOG_TEST_LOGS[0]}
+-chgrp $GROUP_ROOT ${RSYSLOG_TEST_LOGS[1]}
+-chgrp $GROUP_TEST ${RSYSLOG_TEST_LOGS[2]}
++$CHATTR $USER ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $USER ${RSYSLOG_TEST_LOGS[1]}
++$CHATTR $USER ${RSYSLOG_TEST_LOGS[2]}
+ 
+ # create test configuration file
+ test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+@@ -36,7 +39,8 @@ cat << EOF > ${test_conf2}
+ 
+ #### RULES ####
+ 
+-*.*     ${RSYSLOG_TEST_LOGS[2]}
++
++*.*     action(type="omfile" FileCreateMode="0640" fileOwner="root" fileGroup="root" File="${RSYSLOG_TEST_LOGS[2]}")
+ EOF
+ 
+ # create rsyslog.conf configuration file
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/include_multiline_is_root.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_multiline_is_root.pass.sh
+similarity index 81%
+rename from linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/include_multiline_is_root.pass.sh
+rename to shared/templates/rsyslog_logfiles_attributes_modify/tests/include_multiline_is_root.pass.sh
+index d68cc2e67d..78b105abf3 100755
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/include_multiline_is_root.pass.sh
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/include_multiline_is_root.pass.sh
+@@ -6,14 +6,20 @@
+ 
+ source $SHARED/rsyslog_log_utils.sh
+ 
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++{{% else %}}
++CHATTR="chgrp"
++{{% endif %}}
++
+ USER=root
+ 
+ # setup test data
+ create_rsyslog_test_logs 2
+ 
+ # setup test log files ownership
+-chown $USER ${RSYSLOG_TEST_LOGS[0]}
+-chown $USER ${RSYSLOG_TEST_LOGS[1]}
++$CHATTR $USER ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $USER ${RSYSLOG_TEST_LOGS[1]}
+ 
+ # create test configuration file
+ test_conf=${RSYSLOG_TEST_DIR}/test1.conf
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/is_other.fail.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/is_other.fail.sh
+similarity index 70%
+rename from linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/is_other.fail.sh
+rename to shared/templates/rsyslog_logfiles_attributes_modify/tests/is_other.fail.sh
+index 7edbb17ea1..1afe20823c 100755
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/is_other.fail.sh
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/is_other.fail.sh
+@@ -5,15 +5,23 @@
+ 
+ source $SHARED/rsyslog_log_utils.sh
+ 
++{{% if ATTRIBUTE == "owner" %}}
++ADDCOMMAND="useradd"
++CHATTR="chown"
++{{% else %}}
++ADDCOMMAND="groupadd"
++CHATTR="chgrp"
++{{% endif %}}
++
+ USER=testssg
+ 
+-useradd $USER
++$ADDCOMMAND $USER
+ 
+ # setup test data
+ create_rsyslog_test_logs 1
+ 
+ # setup test log file ownership
+-chown $USER ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $USER ${RSYSLOG_TEST_LOGS[0]}
+ 
+ # add rule with non-root user owned log file
+ cat << EOF > $RSYSLOG_CONF
+diff --git a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/is_root.pass.sh b/shared/templates/rsyslog_logfiles_attributes_modify/tests/is_root.pass.sh
+similarity index 77%
+rename from linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/is_root.pass.sh
+rename to shared/templates/rsyslog_logfiles_attributes_modify/tests/is_root.pass.sh
+index e0e518bc50..afce21fa27 100755
+--- a/linux_os/guide/system/logging/ensure_rsyslog_log_file_configuration/rsyslog_files_ownership/tests/is_root.pass.sh
++++ b/shared/templates/rsyslog_logfiles_attributes_modify/tests/is_root.pass.sh
+@@ -5,13 +5,19 @@
+ 
+ source $SHARED/rsyslog_log_utils.sh
+ 
++{{% if ATTRIBUTE == "owner" %}}
++CHATTR="chown"
++{{% else %}}
++CHATTR="chgrp"
++{{% endif %}}
++
+ USER=root
+ 
+ # setup test data
+ create_rsyslog_test_logs 1
+ 
+ # setup test log file ownership
+-chown $USER ${RSYSLOG_TEST_LOGS[0]}
++$CHATTR $USER ${RSYSLOG_TEST_LOGS[0]}
+ 
+ # add rule with root user owned log file
+ cat << EOF > $RSYSLOG_CONF
+-- 
+2.39.1
+
